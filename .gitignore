@@ -1,0 +1,5 @@
+node_modules
+dist
+.firecrawl
+# Personal notes saved into the project folder
+*.note
