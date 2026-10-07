@@ -131,6 +131,7 @@ notion-clone/
 ├── create-shortcut.bat         Adds Desktop and Start menu shortcuts
 ├── PROMPT.md                   Stand-alone build prompt for this app
 ├── README.md
+├── LICENSE                     MIT
 ├── public/
 │   └── icon.png                App and favicon icon
 ├── launcher/
@@ -241,3 +242,7 @@ In the launcher window, this storage belongs to the profile in `%LOCALAPPDATA%\N
 - The file service only answers same-origin requests from `localhost` with the `X-Notes-App` header, so other websites can't use it to touch your files.
 - Without the file service (e.g. a static deployment of `dist/`), storage stays in the browser, Open uses the browser's file picker, and Save As downloads a `.note` file.
 - When deploying, configure the host to serve `index.html` for every route (SPA fallback) so `/p/:id`, `/share` and `/help` resolve.
+
+## License
+
+[MIT](LICENSE)
