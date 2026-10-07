@@ -1,4 +1,4 @@
-# Opens the Notes app in its own window.
+﻿# Opens the Muistipaikka app in its own window.
 # Starts the Vite server hidden (if it isn't already running), opens an Edge/Chrome
 # app window, and stops the server again when that window is closed.
 
@@ -12,10 +12,30 @@ $Url = "http://localhost:$Port/"
 $ProfileDir = Join-Path $env:LOCALAPPDATA 'NotesApp\window-profile'
 # Lets File > Quit inside the app close this window (read by server/fileApi.js).
 $PidFile = Join-Path $env:LOCALAPPDATA 'NotesApp\window.pid'
+# (The NotesApp folder name is kept from before the rename so existing notes stay where they are.)
+
+# The app's own language setting can't be read before it starts, so error
+# messages follow the Windows display language: Finnish or English.
+$Finnish = (Get-UICulture).TwoLetterISOLanguageName -eq 'fi'
+$Text = if ($Finnish) {
+    @{
+        NoNode       = 'Node.js ei ole asennettuna. Asenna se osoitteesta https://nodejs.org ja yritä uudelleen.'
+        InstallFail  = 'Riippuvuuksien asentaminen epäonnistui. Näet syyn suorittamalla "npm install" projektikansiossa.'
+        PortInUse    = "Portti $Port on toisen ohjelman käytössä. Sulje se ja yritä uudelleen."
+        ServerFailed = 'Sovelluksen palvelin ei käynnistynyt. Näet virheen suorittamalla "npm run dev" projektikansiossa.'
+    }
+} else {
+    @{
+        NoNode       = 'Node.js is not installed. Install it from https://nodejs.org and try again.'
+        InstallFail  = 'Installing dependencies failed. Run "npm install" in the project folder to see why.'
+        PortInUse    = "Port $Port is already used by another program. Close it and try again."
+        ServerFailed = 'The app server did not start. Run "npm run dev" in the project folder to see the error.'
+    }
+}
 
 Add-Type -AssemblyName System.Windows.Forms
 function Show-Error([string]$Message) {
-    [System.Windows.Forms.MessageBox]::Show($Message, 'Notes', 'OK', 'Error') | Out-Null
+    [System.Windows.Forms.MessageBox]::Show($Message, 'Muistipaikka', 'OK', 'Error') | Out-Null
 }
 
 function Test-AppRunning {
@@ -39,7 +59,7 @@ function Find-AppBrowser {
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) {
-    Show-Error 'Node.js is not installed. Install it from https://nodejs.org and try again.'
+    Show-Error $Text.NoNode
     exit 1
 }
 
@@ -50,7 +70,7 @@ if (-not (Test-Path (Join-Path $Root 'node_modules'))) {
     $npm = (Get-Command npm.cmd).Source
     $install = Start-Process -FilePath $npm -ArgumentList 'install' -WorkingDirectory $Root -PassThru -Wait
     if ($install.ExitCode -ne 0) {
-        Show-Error 'Installing dependencies failed. Run "npm install" in the project folder to see why.'
+        Show-Error $Text.InstallFail
         exit 1
     }
 }
@@ -58,7 +78,7 @@ if (-not (Test-Path (Join-Path $Root 'node_modules'))) {
 $server = $null
 if (-not (Test-AppRunning)) {
     if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
-        Show-Error "Port $Port is already used by another program. Close it and try again."
+        Show-Error $Text.PortInUse
         exit 1
     }
     $vite = Join-Path $Root 'node_modules\vite\bin\vite.js'
@@ -69,7 +89,7 @@ if (-not (Test-AppRunning)) {
     $deadline = (Get-Date).AddSeconds(30)
     while (-not (Test-AppRunning)) {
         if ($server.HasExited -or (Get-Date) -gt $deadline) {
-            Show-Error 'The app server did not start. Run "npm run dev" in the project folder to see the error.'
+            Show-Error $Text.ServerFailed
             exit 1
         }
         Start-Sleep -Milliseconds 300

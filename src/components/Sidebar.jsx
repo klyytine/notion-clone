@@ -6,6 +6,7 @@ import ShortcutsDialog from './ShortcutsDialog';
 import ThemeToggle from './ThemeToggle';
 import Icon from './Icon';
 import { useFileActions } from '../files/FileActions';
+import { useT } from '../i18n';
 
 export default function Sidebar({ activeId, helpActive = false, open, onNavigate }) {
   const { pages, createPage, deletePage } = usePages();
@@ -13,6 +14,7 @@ export default function Sidebar({ activeId, helpActive = false, open, onNavigate
   const [pendingDelete, setPendingDelete] = useState(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const { preferences } = useFileActions();
+  const t = useT();
 
   function handleNewPage() {
     const page = createPage();
@@ -33,13 +35,13 @@ export default function Sidebar({ activeId, helpActive = false, open, onNavigate
 
   return (
     <>
-      <aside className={`sidebar ${open ? 'open' : 'closed'}`} aria-label="Pages">
+      <aside className={`sidebar ${open ? 'open' : 'closed'}`} aria-label={t('sidebar.label')}>
         <div className="sidebar-header">
-          <span className="workspace-avatar" aria-hidden="true">N</span>
-          <span className="workspace-name">My Notes</span>
+          <span className="workspace-avatar" aria-hidden="true">M</span>
+          <span className="workspace-name">{t('app.name')}</span>
         </div>
 
-        <div className="sidebar-section-label">Pages</div>
+        <div className="sidebar-section-label">{t('sidebar.pages')}</div>
         <nav className="page-list">
           {pages.map((page) => (
             <div key={page.id} className={`page-item ${page.id === activeId ? 'active' : ''}`}>
@@ -50,14 +52,14 @@ export default function Sidebar({ activeId, helpActive = false, open, onNavigate
                 aria-current={page.id === activeId ? 'page' : undefined}
               >
                 <span className="page-item-icon">{page.icon || <Icon name="file" />}</span>
-                <span className={`page-item-title ${page.title ? '' : 'untitled'}`}>{page.title || 'Untitled'}</span>
+                <span className={`page-item-title ${page.title ? '' : 'untitled'}`}>{page.title || t('common.untitled')}</span>
               </Link>
               <button
                 type="button"
                 className="page-item-delete"
                 onClick={() => setPendingDelete(page)}
-                aria-label={`Delete ${page.title || 'Untitled'}`}
-                title="Delete page"
+                aria-label={t('sidebar.deleteNamed', { title: page.title || t('common.untitled') })}
+                title={t('sidebar.deletePage')}
               >
                 <Icon name="trash" size={15} />
               </button>
@@ -66,12 +68,12 @@ export default function Sidebar({ activeId, helpActive = false, open, onNavigate
         </nav>
 
         <button type="button" className="new-page-btn" onClick={handleNewPage}>
-          + New Page
+          {t('sidebar.newPage')}
         </button>
 
         <div className="sidebar-footer">
           <button type="button" className="sidebar-footer-btn" onClick={() => setShowShortcuts(true)}>
-            <Icon name="keyboard" /> Shortcuts
+            <Icon name="keyboard" /> {t('sidebar.shortcuts')}
           </button>
           <Link
             to="/help"
@@ -79,10 +81,10 @@ export default function Sidebar({ activeId, helpActive = false, open, onNavigate
             onClick={onNavigate}
             aria-current={helpActive ? 'page' : undefined}
           >
-            <Icon name="help" /> Help
+            <Icon name="help" /> {t('common.help')}
           </Link>
           <button type="button" className="sidebar-footer-btn" onClick={preferences}>
-            <Icon name="settings" /> Preferences
+            <Icon name="settings" /> {t('sidebar.preferences')}
           </button>
           <ThemeToggle className="sidebar-footer-btn" showLabel />
         </div>
@@ -90,9 +92,9 @@ export default function Sidebar({ activeId, helpActive = false, open, onNavigate
 
       {pendingDelete && (
         <ConfirmDialog
-          title="Delete this page?"
-          message={`“${pendingDelete.title || 'Untitled'}” will be permanently deleted. This can’t be undone.`}
-          confirmLabel="Delete"
+          title={t('sidebar.confirmTitle')}
+          message={t('sidebar.confirmMessage', { title: pendingDelete.title || t('common.untitled') })}
+          confirmLabel={t('common.delete')}
           danger
           onConfirm={confirmDelete}
           onCancel={() => setPendingDelete(null)}

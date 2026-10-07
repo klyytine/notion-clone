@@ -6,10 +6,12 @@ import { AUTOSAVE_MAX_MS, AUTOSAVE_MIN_MS, clampDelay, usePrefs } from '../conte
 import { usePages } from '../context/PagesContext';
 import { fileApi, joinPath, samePath } from '../files/fileApi';
 import { LOCAL_KEY, WORKSPACE_FILE, parseWorkspace, saveLocalPages, serializeWorkspace } from '../files/workspace';
+import { LANGUAGES, t, useT } from '../i18n';
+import { MOD_LABEL } from '../utils/platform';
 
 function suggestFolder(service) {
-  const docs = service?.places.find((p) => p.label.startsWith('Documents')) || service?.places[0];
-  return docs ? joinPath(docs.path, 'Notes') : '';
+  const docs = service?.places.find((p) => p.id === 'documents') || service?.places[0];
+  return docs ? joinPath(docs.path, t('prefs.storage.suggestedFolder')) : '';
 }
 
 function StorageSection({ service }) {
@@ -32,23 +34,23 @@ function StorageSection({ service }) {
     setError('');
     setNotice('');
     try {
-      if (!(await flush())) throw new Error('Your current notes couldn’t be saved first. Fix that before switching.');
+      if (!(await flush())) throw new Error(t('prefs.storage.saveFirstFailed'));
 
       if (mode === 'browser') {
         try {
           saveLocalPages(pages);
         } catch (err) {
-          throw new Error(err.name === 'QuotaExceededError' ? 'Your notes are too large for browser storage (about 5 MB). Keep using a folder.' : err.message);
+          throw new Error(err.name === 'QuotaExceededError' ? t('prefs.storage.tooLargeForBrowser') : err.message);
         }
         updatePrefs({ storageFolder: null });
-        setNotice('Notes are now saved in this browser. Your folder was left unchanged.');
+        setNotice(t('prefs.storage.nowInBrowser'));
         return;
       }
 
       const dir = folder.trim();
-      if (!dir) throw new Error('Enter a folder path.');
+      if (!dir) throw new Error(t('prefs.storage.enterFolder'));
       const st = await fileApi.stat(dir);
-      if (st.exists && st.kind !== 'dir') throw new Error('That path is a file, not a folder.');
+      if (st.exists && st.kind !== 'dir') throw new Error(t('prefs.storage.isFile'));
       if (!st.exists) await fileApi.mkdir(dir);
 
       const workspacePath = joinPath(st.path, WORKSPACE_FILE);
@@ -71,8 +73,8 @@ function StorageSection({ service }) {
       setFolder(st.path);
       setNotice(
         choice === 'use'
-          ? `Opened the notes stored in ${st.path}.`
-          : `Your notes are now saved in ${joinPath(st.path, WORKSPACE_FILE)}.`,
+          ? t('prefs.storage.openedFrom', { path: st.path })
+          : t('prefs.storage.nowInFolder', { path: joinPath(st.path, WORKSPACE_FILE) }),
       );
     } catch (err) {
       setError(err.message);
@@ -83,25 +85,23 @@ function StorageSection({ service }) {
 
   return (
     <section className="prefs-section">
-      <h3>Storage</h3>
-      <p className="prefs-hint">Where your pages are kept.</p>
+      <h3>{t('prefs.storage.heading')}</h3>
+      <p className="prefs-hint">{t('prefs.storage.hint')}</p>
 
       <label className="radio-row">
         <input type="radio" name="storage" checked={mode === 'browser'} onChange={() => { setMode('browser'); setConflict(null); }} />
         <span>
-          <span className="radio-label">This browser</span>
-          <span className="radio-desc">Stored in the app’s local storage (about 5 MB, images included).</span>
+          <span className="radio-label">{t('prefs.storage.browser')}</span>
+          <span className="radio-desc">{t('prefs.storage.browserDesc')}</span>
         </span>
       </label>
 
       <label className={`radio-row ${available ? '' : 'disabled'}`}>
         <input type="radio" name="storage" checked={mode === 'folder'} disabled={!available} onChange={() => setMode('folder')} />
         <span>
-          <span className="radio-label">A folder on this computer</span>
+          <span className="radio-label">{t('prefs.storage.folder')}</span>
           <span className="radio-desc">
-            {available
-              ? `Saved as ${WORKSPACE_FILE} in the folder you choose. No size limit, and easy to back up or sync.`
-              : 'Needs the app’s file service. Start the app with run.bat or “npm run dev” to use this.'}
+            {available ? t('prefs.storage.folderDesc', { file: WORKSPACE_FILE }) : t('prefs.storage.folderUnavailable')}
           </span>
         </span>
       </label>
@@ -115,36 +115,34 @@ function StorageSection({ service }) {
               setFolder(e.target.value);
               setConflict(null);
             }}
-            placeholder="C:\\Users\\you\\Documents\\Notes"
-            aria-label="Notes folder path"
+            placeholder={t('prefs.storage.folderPlaceholder')}
+            aria-label={t('prefs.storage.folderLabel')}
             spellCheck={false}
           />
-          <button type="button" className="btn" onClick={() => setBrowsing(true)}>Browse…</button>
+          <button type="button" className="btn" onClick={() => setBrowsing(true)}>{t('common.browse')}</button>
         </div>
       )}
 
       {current && (
         <p className="prefs-current">
-          Currently: <code>{joinPath(current, WORKSPACE_FILE)}</code>
+          {t('prefs.storage.current')} <code>{joinPath(current, WORKSPACE_FILE)}</code>
         </p>
       )}
-      {!current && <p className="prefs-current">Currently: this browser (<code>{LOCAL_KEY}</code>)</p>}
+      {!current && <p className="prefs-current">{t('prefs.storage.current')} {t('prefs.storage.currentBrowser')} (<code>{LOCAL_KEY}</code>)</p>}
 
       {conflict ? (
         <div className="prefs-conflict" role="alert">
-          <p>
-            This folder already has notes ({conflict.count} {conflict.count === 1 ? 'page' : 'pages'}). What should happen?
-          </p>
+          <p>{t('prefs.storage.conflict', { count: conflict.count })}</p>
           <div className="prefs-conflict-actions">
-            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => apply('use')}>Open those notes</button>
-            <button type="button" className="btn btn-danger" disabled={busy} onClick={() => apply('replace')}>Replace them with my current notes</button>
-            <button type="button" className="btn" onClick={() => setConflict(null)}>Cancel</button>
+            <button type="button" className="btn btn-primary" disabled={busy} onClick={() => apply('use')}>{t('prefs.storage.openThose')}</button>
+            <button type="button" className="btn btn-danger" disabled={busy} onClick={() => apply('replace')}>{t('prefs.storage.replaceThem')}</button>
+            <button type="button" className="btn" onClick={() => setConflict(null)}>{t('common.cancel')}</button>
           </div>
         </div>
       ) : (
         changed && (
           <button type="button" className="btn btn-primary" disabled={busy} onClick={() => apply()}>
-            {busy ? 'Applying…' : 'Apply storage location'}
+            {busy ? t('prefs.storage.applying') : t('prefs.storage.apply')}
           </button>
         )
       )}
@@ -179,10 +177,8 @@ function DelayInput() {
   return (
     <label className={`number-row ${prefs.autosave ? '' : 'disabled'}`}>
       <span className="switch-text">
-        <span className="switch-label">Autosave delay</span>
-        <span className="switch-desc">
-          Wait this long after you stop typing before saving ({AUTOSAVE_MIN_MS.toLocaleString()}–{AUTOSAVE_MAX_MS.toLocaleString()} ms).
-        </span>
+        <span className="switch-label">{t('prefs.saving.delay')}</span>
+        <span className="switch-desc">{t('prefs.saving.delayDesc', { min: AUTOSAVE_MIN_MS, max: AUTOSAVE_MAX_MS })}</span>
       </span>
       <span className="number-input">
         <input
@@ -197,7 +193,7 @@ function DelayInput() {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
           onKeyDown={(e) => e.key === 'Enter' && commit()}
-          aria-label="Autosave delay in milliseconds"
+          aria-label={t('prefs.saving.delayLabel')}
         />
         <span>ms</span>
       </span>
@@ -207,40 +203,54 @@ function DelayInput() {
 
 export default function PreferencesDialog({ service, onClose }) {
   const { prefs, updatePrefs } = usePrefs();
+  useT();
 
   return (
-    <Modal title="Preferences" onClose={onClose} size="wide" footer={<button type="button" className="btn btn-primary" onClick={onClose}>Done</button>}>
+    <Modal title={t('prefs.title')} onClose={onClose} size="wide" footer={<button type="button" className="btn btn-primary" onClick={onClose}>{t('common.done')}</button>}>
       <div className="prefs">
+        <section className="prefs-section">
+          <h3>{t('prefs.language.heading')}</h3>
+          <p className="prefs-hint">{t('prefs.language.hint')}</p>
+          <div className="language-options" role="radiogroup" aria-label={t('prefs.language.heading')}>
+            {Object.entries(LANGUAGES).map(([code, lang]) => (
+              <label key={code} className="radio-row" lang={code}>
+                <input type="radio" name="language" checked={prefs.language === code} onChange={() => updatePrefs({ language: code })} />
+                <span className="radio-label">{lang.label}</span>
+              </label>
+            ))}
+          </div>
+        </section>
+
         <StorageSection service={service} />
 
         <section className="prefs-section">
-          <h3>Saving</h3>
+          <h3>{t('prefs.saving.heading')}</h3>
           <Switch
-            label="Autosave"
-            description="Save automatically while you work. When off, use File → Save (Ctrl+S)."
+            label={t('prefs.saving.autosave')}
+            description={t('prefs.saving.autosaveDesc', { shortcut: `${MOD_LABEL}+S` })}
             checked={prefs.autosave}
             onChange={(autosave) => updatePrefs({ autosave })}
           />
           <DelayInput />
           <Switch
-            label="Ask to save unsaved changes when closing"
-            description="Shown when you quit or close the window with unsaved changes."
+            label={t('prefs.saving.confirmOnClose')}
+            description={t('prefs.saving.confirmOnCloseDesc')}
             checked={prefs.confirmOnClose}
             onChange={(confirmOnClose) => updatePrefs({ confirmOnClose })}
           />
         </section>
 
         <section className="prefs-section">
-          <h3>Editor</h3>
+          <h3>{t('prefs.editor.heading')}</h3>
           <Switch
-            label="Show line numbers"
-            description="Numbers every block in the left margin."
+            label={t('prefs.editor.lineNumbers')}
+            description={t('prefs.editor.lineNumbersDesc')}
             checked={prefs.showLineNumbers}
             onChange={(showLineNumbers) => updatePrefs({ showLineNumbers })}
           />
           <Switch
-            label="Show word count"
-            description="Words, characters and paragraphs in a bar at the bottom of the page."
+            label={t('prefs.editor.wordCount')}
+            description={t('prefs.editor.wordCountDesc')}
             checked={prefs.showWordCount}
             onChange={(showWordCount) => updatePrefs({ showWordCount })}
           />

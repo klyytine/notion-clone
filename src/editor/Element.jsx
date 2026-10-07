@@ -2,16 +2,18 @@ import { useState } from 'react';
 import { Node, Transforms } from 'slate';
 import { ReactEditor, useFocused, useReadOnly, useSelected, useSlateStatic } from 'slate-react';
 import ImageSourcePicker from '../components/ImageSourcePicker';
+import { t, useT } from '../i18n';
 
+// Keys under editor.placeholder in the language files.
 const PLACEHOLDERS = {
-  'heading-one': 'Heading 1',
-  'heading-two': 'Heading 2',
-  'heading-three': 'Heading 3',
-  'bulleted-list': 'List',
-  'numbered-list': 'List',
-  todo: 'To-do',
-  quote: 'Empty quote',
-  callout: 'Type something…',
+  'heading-one': 'heading-one',
+  'heading-two': 'heading-two',
+  'heading-three': 'heading-three',
+  'bulleted-list': 'list',
+  'numbered-list': 'list',
+  todo: 'todo',
+  quote: 'quote',
+  callout: 'callout',
 };
 const ALWAYS_SHOWN = ['heading-one', 'heading-two', 'heading-three'];
 const CALLOUT_EMOJIS = ['💡', '⚠️', '📌', '✅', '❗', '🔥'];
@@ -20,12 +22,13 @@ function usePlaceholder(element) {
   const selected = useSelected();
   const focused = useFocused();
   const readOnly = useReadOnly();
+  useT();
   if (readOnly) return undefined;
   const empty = element.children.length === 1 && element.children[0].text === '';
   if (!empty) return undefined;
   const active = selected && focused;
-  if (element.type === 'paragraph') return active ? "Write something, or press '/' for commands…" : undefined;
-  if (ALWAYS_SHOWN.includes(element.type) || active) return PLACEHOLDERS[element.type];
+  if (element.type === 'paragraph') return active ? t('editor.placeholder.paragraph') : undefined;
+  if (ALWAYS_SHOWN.includes(element.type) || active) return t(`editor.placeholder.${PLACEHOLDERS[element.type]}`);
   return undefined;
 }
 
@@ -81,6 +84,7 @@ export default function Element(props) {
 }
 
 function TodoBlock({ attributes, children, element, ph }) {
+  useT();
   const readOnly = useReadOnly();
   const setNode = useSetNode(element);
   const indent = element.indent || 0;
@@ -95,7 +99,7 @@ function TodoBlock({ attributes, children, element, ph }) {
           type="button"
           role="checkbox"
           aria-checked={!!element.checked}
-          aria-label={element.checked ? 'Mark as not done' : 'Mark as done'}
+          aria-label={element.checked ? t('editor.markNotDone') : t('editor.markDone')}
           className="todo-checkbox"
           disabled={readOnly}
           onMouseDown={(e) => e.preventDefault()}
@@ -108,6 +112,7 @@ function TodoBlock({ attributes, children, element, ph }) {
 }
 
 function CalloutBlock({ attributes, children, element, ph }) {
+  useT();
   const readOnly = useReadOnly();
   const setNode = useSetNode(element);
   const cycleEmoji = () => {
@@ -122,7 +127,7 @@ function CalloutBlock({ attributes, children, element, ph }) {
           disabled={readOnly}
           onMouseDown={(e) => e.preventDefault()}
           onClick={cycleEmoji}
-          title="Change emoji"
+          title={t('editor.changeEmoji')}
         >
           {element.emoji || '💡'}
         </button>
@@ -133,6 +138,7 @@ function CalloutBlock({ attributes, children, element, ph }) {
 }
 
 function CodeBlock({ attributes, children, element }) {
+  useT();
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -146,9 +152,9 @@ function CodeBlock({ attributes, children, element }) {
   return (
     <div {...attributes} className="block block-code">
       <div contentEditable={false} className="code-toolbar">
-        <span className="code-lang">Code</span>
+        <span className="code-lang">{t('editor.code')}</span>
         <button type="button" className="code-copy" onMouseDown={(e) => e.preventDefault()} onClick={copy}>
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('common.copied') : t('common.copy')}
         </button>
       </div>
       <pre spellCheck={false}>
@@ -172,6 +178,7 @@ function DividerBlock({ attributes, children }) {
 }
 
 function ImageBlock({ attributes, children, element }) {
+  useT();
   const editor = useSlateStatic();
   const readOnly = useReadOnly();
   const selected = useSelected();
@@ -185,14 +192,14 @@ function ImageBlock({ attributes, children, element }) {
     body = (
       <figure className={`image-figure ${selected && focused ? 'is-selected' : ''}`}>
         {broken ? (
-          <div className="image-broken">This image couldn’t be loaded.</div>
+          <div className="image-broken">{t('editor.imageBroken')}</div>
         ) : (
           <img src={element.url} alt="" onError={() => setBroken(true)} draggable={false} />
         )}
         {!readOnly && (
           <div className="image-actions">
-            <button type="button" onClick={() => { setBroken(false); setNode({ url: '' }); }}>Replace</button>
-            <button type="button" onClick={remove}>Delete</button>
+            <button type="button" onClick={() => { setBroken(false); setNode({ url: '' }); }}>{t('common.replace')}</button>
+            <button type="button" onClick={remove}>{t('common.delete')}</button>
           </div>
         )}
       </figure>

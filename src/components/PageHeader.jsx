@@ -2,8 +2,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import IconPicker from './IconPicker';
 import ImageSourcePicker from './ImageSourcePicker';
 import { useClickOutside } from '../hooks/useClickOutside';
+import { useT } from '../i18n';
 
 function TitleInput({ value, onChange, onEnter, autoFocus }) {
+  const t = useT();
   const ref = useRef(null);
 
   const resize = () => {
@@ -23,10 +25,10 @@ function TitleInput({ value, onChange, onEnter, autoFocus }) {
       ref={ref}
       className="page-title"
       rows={1}
-      placeholder="Untitled"
+      placeholder={t('common.untitled')}
       value={value}
       autoFocus={autoFocus}
-      aria-label="Page title"
+      aria-label={t('pageHeader.titleLabel')}
       onChange={(e) => onChange(e.target.value.replace(/\n/g, ''))}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || (e.key === 'ArrowDown' && e.target.selectionStart === value.length)) {
@@ -39,6 +41,7 @@ function TitleInput({ value, onChange, onEnter, autoFocus }) {
 }
 
 function Cover({ url, readOnly, onChange, onRemove }) {
+  const t = useT();
   const [broken, setBroken] = useState(false);
   useEffect(() => setBroken(false), [url]);
   return (
@@ -46,8 +49,8 @@ function Cover({ url, readOnly, onChange, onRemove }) {
       {broken ? <div className="page-cover-broken" /> : <img src={url} alt="" onError={() => setBroken(true)} />}
       {!readOnly && (
         <div className="cover-actions">
-          <button type="button" className="cover-btn" onClick={onChange}>Change cover</button>
-          <button type="button" className="cover-btn" onClick={onRemove}>Remove cover</button>
+          <button type="button" className="cover-btn" onClick={onChange}>{t('pageHeader.changeCover')}</button>
+          <button type="button" className="cover-btn" onClick={onRemove}>{t('pageHeader.removeCover')}</button>
         </div>
       )}
     </div>
@@ -55,6 +58,7 @@ function Cover({ url, readOnly, onChange, onRemove }) {
 }
 
 export default function PageHeader({ page, onUpdate, onTitleEnter, readOnly = false }) {
+  const t = useT();
   const [iconOpen, setIconOpen] = useState(false);
   const [coverOpen, setCoverOpen] = useState(false);
   const iconRef = useRef(null);
@@ -96,7 +100,7 @@ export default function PageHeader({ page, onUpdate, onTitleEnter, readOnly = fa
             {readOnly ? (
               <div className="page-icon">{page.icon}</div>
             ) : (
-              <button type="button" className="page-icon" onClick={() => setIconOpen((o) => !o)} aria-label="Change icon" title="Change icon">
+              <button type="button" className="page-icon" onClick={() => setIconOpen((o) => !o)} aria-label={t('pageHeader.changeIcon')} title={t('pageHeader.changeIcon')}>
                 {page.icon}
               </button>
             )}
@@ -109,14 +113,14 @@ export default function PageHeader({ page, onUpdate, onTitleEnter, readOnly = fa
             {!page.icon && (
               <div className="icon-anchor" ref={iconRef}>
                 <button type="button" className="action-btn add-icon" onClick={() => setIconOpen((o) => !o)}>
-                  Add icon
+                  {t('pageHeader.addIcon')}
                 </button>
                 {picker}
               </div>
             )}
             {!page.cover && (
               <button type="button" className="action-btn add-cover" onClick={() => setCoverOpen(true)}>
-                Add cover
+                {t('pageHeader.addCover')}
               </button>
             )}
           </div>
@@ -135,7 +139,7 @@ export default function PageHeader({ page, onUpdate, onTitleEnter, readOnly = fa
         )}
 
         {readOnly ? (
-          <h1 className="page-title">{page.title || 'Untitled'}</h1>
+          <h1 className="page-title">{page.title || t('common.untitled')}</h1>
         ) : (
           <TitleInput
             value={page.title}

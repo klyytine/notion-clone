@@ -3,7 +3,7 @@ You are a senior frontend engineer who specializes in rich text editors, desktop
 </role>
 
 <context>
-Build "Notes": a Notion-style note-taking app with block-based editing, a clean minimal UI, and a desktop-app feel. It runs locally in the browser. A small local file service (built into the dev server) lets it open and save real files on disk, keep the whole workspace in a folder, and behave like a native app with a File menu.
+Build "Muistipaikka" (Finnish for "a place for notes"): a Notion-style note-taking app with block-based editing, a clean minimal UI, and a desktop-app feel. The interface is in Finnish by default, with English as a second language (section 13). It runs locally in the browser. A small local file service (built into the dev server) lets it open and save real files on disk, keep the whole workspace in a folder, and behave like a native app with a File menu.
 
 Everything below is the full specification. You don't need any other material. For reference on Notion's behavior and look, you may read:
 - Notion Help Center: https://www.notion.com/help
@@ -18,6 +18,7 @@ Everything below is the full specification. You don't need any other material. F
 - State: React Context (pages + autosave, preferences, theme, file actions)
 - Persistence: `localStorage` by default; optionally a JSON workspace file in a folder on disk
 - Styling: plain CSS with CSS variables for theming (light, dark, print)
+- Localization: a small built-in i18n module (no library): dictionaries per language, `{name}` placeholders, plural forms with `Intl.PluralRules`
 - Images: FileReader API, stored as base64 data URLs
 - Local file service: a Vite plugin that adds `/api/*` middleware to the dev and preview servers (Node `fs`, no extra dependencies)
 </tech-stack>
@@ -103,6 +104,7 @@ Used for Open, Save As, and choosing a folder in Preferences, so every file has 
 - When the window closes: do a last save (use `fetch` with `keepalive` for the file service), and if there are unsaved changes and the preference is on, show the browser's "Leave site?" prompt.
 
 ## 7. Preferences dialog
+- **Language**: Suomi (default) or English, as radio buttons, each label written in its own language. Changes apply immediately, with no reload.
 - **Storage**: "This browser" (localStorage, about 5 MB) or "A folder on this computer" (saved as `notes-workspace.json` in that folder; no size limit, easy to back up or sync). The folder option has a path field and a Browse… button and is disabled, with an explanation, when the file service isn't running. Switching saves first. If the chosen folder already contains notes, ask: "Open those notes", "Replace them with my current notes", or Cancel. Show the current location. If the folder can't be read at startup, show a screen with "Try again" and "Use browser storage instead".
 - **Saving**: Autosave on/off, Autosave delay (100–60,000 ms), "Ask to save unsaved changes when closing".
 - **Editor**: "Show line numbers" (numbers each block in the left margin), "Show word count" (a bottom status bar with words, characters and paragraphs).
@@ -119,7 +121,7 @@ A Vite plugin (`configureServer` and `configurePreviewServer`) that adds POST-on
 | `fetch-url` | Fetches a URL on the server so "Open from URL" isn't blocked by CORS. 15 s timeout, 10 MB limit. |
 | `app/quit` | Closes the launcher's app window (see section 12). |
 
-Security: accept a request only if it has the header `X-Notes-App: 1`, the Host is loopback (`localhost`, `127.0.0.1`, `[::1]`), and the Origin, if present, matches the Host. Limit request and read sizes. Turn Node errors (`ENOENT`, `EACCES`, `EBUSY`…) into short, plain messages.
+Security: accept a request only if it has the header `X-Notes-App: 1`, the Host is loopback (`localhost`, `127.0.0.1`, `[::1]`), and the Origin, if present, matches the Host. Limit request and read sizes. Turn Node errors (`ENOENT`, `EACCES`, `EBUSY`…) into short, plain messages. Every error response carries a `code` (for example `notFound`) and `params` (for example `{ path }`) so the app can show it in the user's language, plus an English `error` message as a fallback. Quick places carry an `id` (`home`, `desktop`, `documents`, `downloads`…) so the app can translate their names; drives keep their letter.
 
 Without the service (for example, a static deployment), the app still works: storage stays in the browser, Open uses the browser's file picker, and Save As downloads a file.
 
@@ -139,8 +141,20 @@ Without the service (for example, a static deployment), the app still works: sto
 ## 12. Desktop launcher (Windows, optional)
 - `run.bat` starts a hidden PowerShell script that: checks for Node.js, runs `npm install` on first run, starts Vite hidden on port 5173 (or reuses an instance that is already running), and opens Edge or Chrome in app mode (`--app=URL`, its own `--user-data-dir` profile, no tabs or address bar).
 - It writes the window's process ID to a file so File → Quit can close the window, and it stops the server when the window closes.
-- `create-shortcut.bat` adds a "Notes" shortcut with an icon to the Desktop and Start menu.
-- Show plain error message boxes (Node.js missing, port in use, server didn't start).
+- `create-shortcut.bat` adds a "Muistipaikka" shortcut with the app icon to the Desktop and Start menu.
+- Show plain error message boxes (Node.js missing, port in use, server didn't start). The launcher can't read the in-app language, so these messages follow the Windows display language (`(Get-UICulture).TwoLetterISOLanguageName`): Finnish for `fi`, English otherwise. Save the script as UTF-8 **with BOM**, or Windows PowerShell 5.1 garbles ä and ö.
+- App icon: a black rounded tile with a white 3D extruded "M" (grey extrusion sides), drawn by a small Pillow script into `.ico` and `public/icon.png`.
+
+## 13. Languages (Finnish and English)
+- Finnish is the default for new and existing users; the choice is stored with the other preferences and applied before the first render, so nothing flashes in the wrong language. Set `<html lang>` to match.
+- Translate everything the user sees: menus, dialogs, buttons, placeholders, tooltips and `aria-label`s, status texts, error messages (including those from the file service), the help page, the shortcuts dialog, the welcome page and the browser tab title. Never translate the user's own page content.
+- Use the Finnish terms from Notion's own Finnish help (https://www.notion.com/fi/help), for example: block = *lohko*, Text = *Teksti*, Heading 1 = *Otsikko 1*, Bulleted list = *Luettelo*, Numbered list = *Numeroitu luettelo*, To-do list = *Tehtävälista*, Quote = *Lainaus*, Callout = *Huomiolohko*, Code = *Koodi*, Divider = *Jakaja*, Image = *Kuva*, slash commands = *Vinoviivakomennot*, Add icon = *Lisää kuvake*, Add cover = *Lisää kansi*, Share = *Jaa*, dark mode = *tumma tila*, Preferences = *Asetukset*, Untitled = *Nimetön*.
+- Follow Finnish typography: closing quotes on both sides (”…”), an en dash with spaces ( – ), a space before units (5 Mt), and a non-breaking space as the thousands separator (60 000).
+- Plurals: "1 sana / 2 sanaa", "1 sivu / 3 sivua". Format numbers and dates with the current locale (`fi-FI` / `en-US`).
+- Slash commands match keywords in both languages, so `/tehtävä` and `/todo` both work in either language.
+- The welcome page exists in both languages; a new user gets it in the current language. The help page has an "Add a welcome page" button that adds a fresh copy in the current language (never overwrite existing pages).
+- Plain modules (file parsers, the file-service client, image helpers) translate through a module-level `t()`; components use a `useT()` hook that re-renders them when the language changes.
+- Keep internal identifiers (storage keys, file formats, the launcher's profile folder, the `X-Notes-App` header) in English, so changing the language or the app name never moves anyone's data.
 
 </features>
 
@@ -181,7 +195,7 @@ Only Save works while a dialog is open; other File shortcuts wait until it close
 - Smooth transitions on every interactive element.
 - Menus, popovers and modals close on Esc and on clicking outside. Modals trap focus and return it when closed.
 - Use simple inline SVG icons for the interface (menu, file, folder, globe, help, keyboard, etc.) and emojis for page icons.
-- Messages are short and plain, and say what to do next (for example: "That page is larger than 10 MB.", "This folder already has notes (3 pages). What should happen?").
+- Messages are short and plain, and say what to do next (for example: "Sivu on yli 10 Mt." / "That page is larger than 10 MB.", "Tässä kansiossa on jo muistiinpanoja (3 sivua). Mitä tehdään?").
 - Accessible: proper roles (`menu`, `menuitem`, `listbox`, `dialog`, `status`), `aria-expanded`, labels on icon-only buttons, visible focus.
 - Responsive down to phone width.
 </design-specifications>
@@ -197,7 +211,8 @@ Only Save works while a dialog is open; other File shortcuts wait until it close
 server/      fileApi.js (Vite plugin: local file service)
 launcher/    launch.ps1, create-shortcut.ps1, icon
 src/
-  context/   PagesContext (pages, autosave, file sync), PrefsContext, ThemeContext, welcome page
+  i18n/      index.js (t, useT, current language), fi.js (default), en.js — same keys in both
+  context/   PagesContext (pages, autosave, file sync), PrefsContext, ThemeContext, welcome page (fi + en)
   editor/    BlockEditor, Slate plugin (withNotion), schema + sanitizer, commands, elements, leaf,
              slash menu, hover toolbar
   files/     FileActions (File menu logic, shortcuts, dialogs), documents (.note/.md/.txt/HTML),
@@ -205,7 +220,8 @@ src/
   components/ Topbar, FileMenu, FileDialog, PreferencesDialog, AppDialogs, Modal, Sidebar,
              PageHeader, IconPicker, ImageSourcePicker, StatusBar, ShortcutsDialog, Icon
   pages/     Workspace (/p/:id), SharedPage (/share), HelpPage (/help)
-  help/      shortcuts.js (single source of shortcut data)
+  help/      shortcuts.js (single source of shortcut data), HelpParts.jsx (shared pieces),
+             content.fi.jsx / content.en.jsx (help text per language)
   utils/     image (FileReader + downscaling), share (base64url), platform
 run.bat, create-shortcut.bat, README.md
 ```
@@ -224,7 +240,8 @@ Deliver a complete, working project that runs with `npm install && npm run dev`,
 ✅ Autosave with a clear status, and an unsaved-changes prompt on quit
 ✅ Public sharing with links that contain the whole page
 ✅ Dark mode, print styles, keyboard shortcuts, accessible menus and dialogs
+✅ Finnish (default) and English interface, switchable in Preferences, with Notion's Finnish terminology
 ✅ Optional Windows launcher that opens the app in its own window
 
-Before finishing, run the app and check: create and edit a page with every block type; save it as `.note` and `.md` and reopen both; open a URL; switch storage to a folder and back; quit with unsaved changes; open a share link in a new window.
+Before finishing, run the app and check: create and edit a page with every block type; save it as `.note` and `.md` and reopen both; open a URL; switch storage to a folder and back; quit with unsaved changes; open a share link in a new window; switch the language to English and back and confirm no Finnish or English text is left behind; check that every key exists in both language files.
 </output>

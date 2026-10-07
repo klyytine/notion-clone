@@ -1,6 +1,7 @@
 import { sanitizeContent } from '../editor/schema';
 import { isSafeImageUrl } from '../utils/image';
 import { createWelcomePage } from '../context/welcomePage';
+import { t } from '../i18n';
 
 // The workspace is the list of pages in the sidebar. It lives either in this
 // browser's localStorage or in WORKSPACE_FILE inside a folder chosen in Preferences.
@@ -69,7 +70,7 @@ export function parseWorkspace(text) {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(`${WORKSPACE_FILE} is damaged and can’t be read.`);
+    throw new Error(t('documents.workspaceDamaged', { file: WORKSPACE_FILE }));
   }
   const pages = normalizeList(Array.isArray(data) ? data : data?.pages);
   return pages.length ? pages : [makePage()];

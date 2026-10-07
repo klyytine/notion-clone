@@ -1,13 +1,14 @@
 import { MAX_INDENT, createBlock, emptyParagraph, sanitizeContent } from '../editor/schema';
 import { isSafeImageUrl } from '../utils/image';
 import { baseName, extName } from './fileApi';
+import { t } from '../i18n';
 
 // Converts pages to and from files: native .note (lossless JSON), Markdown,
 // plain text, and HTML (for pages opened from a web address).
 
 export const SAVE_FORMATS = {
-  note: { ext: '.note', label: 'Note (.note)' },
-  md: { ext: '.md', label: 'Markdown (.md) — text only' },
+  note: { ext: '.note', labelKey: 'formats.note' },
+  md: { ext: '.md', labelKey: 'formats.md' },
 };
 
 export const OPENABLE_EXTENSIONS = ['.note', '.json', '.md', '.markdown', '.txt'];
@@ -149,12 +150,12 @@ function fromNoteJson(text) {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error('This file isn’t a valid note (the JSON can’t be read).');
+    throw new Error(t('documents.invalidNote'));
   }
   if (data?.format === 'notes-workspace') {
-    throw new Error('This is a workspace file. To use it, choose its folder in Preferences → Storage.');
+    throw new Error(t('documents.workspaceFile'));
   }
-  if (!data || !Array.isArray(data.content)) throw new Error('This file isn’t a note created by this app.');
+  if (!data || !Array.isArray(data.content)) throw new Error(t('documents.notThisApp'));
   return {
     title: typeof data.title === 'string' ? data.title : '',
     icon: typeof data.icon === 'string' ? data.icon.slice(0, 16) : null,

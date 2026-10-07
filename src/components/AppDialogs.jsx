@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import Modal from './Modal';
 import { baseName, extName, safeFileName } from '../files/fileApi';
+import { useT } from '../i18n';
 
 export function OpenUrlDialog({ onSubmit, onCancel }) {
+  const t = useT();
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -15,7 +17,7 @@ export function OpenUrlDialog({ onSubmit, onCancel }) {
     try {
       new URL(value);
     } catch {
-      setError('That doesn’t look like a web address.');
+      setError(t('urlDialog.invalid'));
       return;
     }
     setBusy(true);
@@ -26,11 +28,9 @@ export function OpenUrlDialog({ onSubmit, onCancel }) {
   }
 
   return (
-    <Modal title="Open from URL" onClose={onCancel}>
+    <Modal title={t('urlDialog.title')} onClose={onCancel}>
       <form onSubmit={submit}>
-        <p className="modal-message">
-          Paste a link to a web page, a Markdown or text file, or a <code>.note</code> file. It opens as a new page.
-        </p>
+        <p className="modal-message">{t('urlDialog.message')}</p>
         <input
           className="text-input wide-input"
           type="url"
@@ -41,13 +41,13 @@ export function OpenUrlDialog({ onSubmit, onCancel }) {
             setUrl(e.target.value);
             setError('');
           }}
-          aria-label="Web address"
+          aria-label={t('urlDialog.label')}
         />
         {error && <p className="field-error" role="alert">{error}</p>}
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn" onClick={onCancel}>{t('common.cancel')}</button>
           <button type="submit" className="btn btn-primary" disabled={busy || !url.trim()}>
-            {busy ? 'Opening…' : 'Open'}
+            {busy ? t('urlDialog.opening') : t('common.open')}
           </button>
         </div>
       </form>
@@ -56,6 +56,7 @@ export function OpenUrlDialog({ onSubmit, onCancel }) {
 }
 
 export function RenameDialog({ page, canRenameFile, onSubmit, onCancel }) {
+  const t = useT();
   const [title, setTitle] = useState(page.title);
   const [renameFile, setRenameFile] = useState(true);
   const [error, setError] = useState('');
@@ -71,10 +72,10 @@ export function RenameDialog({ page, canRenameFile, onSubmit, onCancel }) {
   }
 
   return (
-    <Modal title="Rename" onClose={onCancel}>
+    <Modal title={t('renameDialog.title')} onClose={onCancel}>
       <form onSubmit={submit}>
         <label className="field">
-          <span>Page title</span>
+          <span>{t('renameDialog.pageTitle')}</span>
           <input
             className="text-input wide-input"
             value={title}
@@ -95,7 +96,7 @@ export function RenameDialog({ page, canRenameFile, onSubmit, onCancel }) {
               onChange={(e) => setRenameFile(e.target.checked)}
             />
             <span>
-              Also rename the file on disk
+              {t('renameDialog.alsoRenameFile')}
               <span className="check-hint">
                 {baseName(page.filePath)} → {newFileName}
               </span>
@@ -104,8 +105,8 @@ export function RenameDialog({ page, canRenameFile, onSubmit, onCancel }) {
         )}
         {error && <p className="field-error" role="alert">{error}</p>}
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onCancel}>Cancel</button>
-          <button type="submit" className="btn btn-primary" disabled={busy}>Rename</button>
+          <button type="button" className="btn" onClick={onCancel}>{t('common.cancel')}</button>
+          <button type="submit" className="btn btn-primary" disabled={busy}>{t('renameDialog.title')}</button>
         </div>
       </form>
     </Modal>
@@ -113,21 +114,22 @@ export function RenameDialog({ page, canRenameFile, onSubmit, onCancel }) {
 }
 
 export function UnsavedChangesDialog({ onSave, onDiscard, onCancel }) {
+  const t = useT();
   const [dontAskAgain, setDontAskAgain] = useState(false);
   const [busy, setBusy] = useState(false);
 
   return (
     <Modal
-      title="Save changes before closing?"
+      title={t('unsavedDialog.title')}
       onClose={onCancel}
       footer={
         <>
           <label className="check-row footer-check">
             <input type="checkbox" checked={dontAskAgain} onChange={(e) => setDontAskAgain(e.target.checked)} />
-            <span>Don’t show this again</span>
+            <span>{t('unsavedDialog.dontShowAgain')}</span>
           </label>
-          <button type="button" className="btn" onClick={onCancel}>Cancel</button>
-          <button type="button" className="btn" onClick={() => onDiscard(dontAskAgain)}>Don’t Save</button>
+          <button type="button" className="btn" onClick={onCancel}>{t('common.cancel')}</button>
+          <button type="button" className="btn" onClick={() => onDiscard(dontAskAgain)}>{t('unsavedDialog.dontSave')}</button>
           <button
             type="button"
             className="btn btn-primary"
@@ -139,23 +141,24 @@ export function UnsavedChangesDialog({ onSave, onDiscard, onCancel }) {
               setBusy(false);
             }}
           >
-            {busy ? 'Saving…' : 'Save'}
+            {busy ? t('common.savingEllipsis') : t('common.save')}
           </button>
         </>
       }
     >
-      <p className="modal-message">You have changes that haven’t been saved. If you don’t save, they’ll be lost.</p>
+      <p className="modal-message">{t('unsavedDialog.message')}</p>
     </Modal>
   );
 }
 
 export function MessageDialog({ title, message, onClose }) {
+  const t = useT();
   return (
     <Modal
       title={title}
       onClose={onClose}
       footer={
-        <button type="button" className="btn btn-primary" data-autofocus onClick={onClose}>OK</button>
+        <button type="button" className="btn btn-primary" data-autofocus onClick={onClose}>{t('common.ok')}</button>
       }
     >
       <p className="modal-message">{message}</p>

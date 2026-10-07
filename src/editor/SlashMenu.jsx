@@ -2,11 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ReactEditor } from 'slate-react';
 import Icon from '../components/Icon';
+import { useT } from '../i18n';
 
 const GAP = 6;
 const MARGIN = 8;
 
 export default function SlashMenu({ editor, anchor, items, activeIndex, onSelect, onHover }) {
+  const t = useT();
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
 
@@ -45,10 +47,10 @@ export default function SlashMenu({ editor, anchor, items, activeIndex, onSelect
       className="popover slash-menu"
       style={pos ? { top: pos.top, left: pos.left } : { visibility: 'hidden' }}
       role="listbox"
-      aria-label="Insert block"
+      aria-label={t('editor.slashLabel')}
       onMouseDown={(e) => e.preventDefault()}
     >
-      <div className="popover-label">{items.length ? 'Basic blocks' : 'No results'}</div>
+      <div className="popover-label">{items.length ? t('editor.basicBlocks') : t('editor.noResults')}</div>
       {items.map((cmd, i) => (
         <button
           key={cmd.type}

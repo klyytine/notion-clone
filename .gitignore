@@ -3,3 +3,5 @@ dist
 .firecrawl
 # Personal notes saved into the project folder
 *.note
+# Local Finnish copy of the README (not published)
+README.fi.md

@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { DEFAULT_LANGUAGE, isLanguage, setLanguage } from '../i18n';
 
 const STORAGE_KEY = 'notion-clone:prefs:v1';
 export const AUTOSAVE_MIN_MS = 100;
 export const AUTOSAVE_MAX_MS = 60000;
 
 export const DEFAULT_PREFS = {
+  language: DEFAULT_LANGUAGE,
   autosave: true,
   autosaveDelay: 600,
   confirmOnClose: true,
@@ -22,6 +24,7 @@ export function clampDelay(value) {
 function sanitize(raw) {
   const p = { ...DEFAULT_PREFS, ...(raw && typeof raw === 'object' ? raw : {}) };
   return {
+    language: isLanguage(p.language) ? p.language : DEFAULT_LANGUAGE,
     autosave: p.autosave !== false,
     autosaveDelay: clampDelay(p.autosaveDelay),
     confirmOnClose: p.confirmOnClose !== false,
@@ -32,11 +35,15 @@ function sanitize(raw) {
 }
 
 function load() {
+  let prefs;
   try {
-    return sanitize(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+    prefs = sanitize(JSON.parse(localStorage.getItem(STORAGE_KEY)));
   } catch {
-    return DEFAULT_PREFS;
+    prefs = DEFAULT_PREFS;
   }
+  // Apply the language before the first render so nothing flashes in the wrong language.
+  setLanguage(prefs.language);
+  return prefs;
 }
 
 const PrefsContext = createContext(null);
@@ -45,6 +52,7 @@ export function PrefsProvider({ children }) {
   const [prefs, setPrefs] = useState(load);
 
   useEffect(() => {
+    setLanguage(prefs.language);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs));
     } catch {

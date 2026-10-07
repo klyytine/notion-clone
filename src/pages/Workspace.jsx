@@ -9,6 +9,7 @@ import HelpPage from './HelpPage';
 import StatusBar from '../components/StatusBar';
 import { usePrefs } from '../context/PrefsContext';
 import { FileActionsProvider } from '../files/FileActions';
+import { useLanguage, t } from '../i18n';
 
 const MOBILE_QUERY = '(max-width: 768px)';
 const isMobile = () => window.matchMedia(MOBILE_QUERY).matches;
@@ -17,6 +18,7 @@ export default function Workspace({ view = 'page' }) {
   const { pageId } = useParams();
   const { pages, updatePage, createPage } = usePages();
   const { prefs } = usePrefs();
+  const language = useLanguage();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(() => !isMobile());
   const editorApi = useRef(null);
@@ -24,9 +26,9 @@ export default function Workspace({ view = 'page' }) {
   const page = isHelp ? null : pages.find((p) => p.id === pageId);
 
   useEffect(() => {
-    if (isHelp) document.title = 'Help';
-    else if (page) document.title = `${page.icon ? `${page.icon} ` : ''}${page.title || 'Untitled'}`;
-  }, [isHelp, page?.icon, page?.title]);
+    if (isHelp) document.title = `${t('common.help')} – ${t('app.name')}`;
+    else if (page) document.title = `${page.icon ? `${page.icon} ` : ''}${page.title || t('common.untitled')}`;
+  }, [isHelp, page?.icon, page?.title, language]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -54,7 +56,7 @@ export default function Workspace({ view = 'page' }) {
         {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
 
         <main className="main">
-          <Topbar page={page} title={isHelp ? 'Help' : undefined} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
+          <Topbar page={page} title={isHelp ? t('common.help') : undefined} onToggleSidebar={() => setSidebarOpen((o) => !o)} />
           <div className="page-scroll">
             {isHelp ? (
               <HelpPage />

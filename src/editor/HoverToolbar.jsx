@@ -4,17 +4,19 @@ import { Editor, Range } from 'slate';
 import { useFocused, useSlate } from 'slate-react';
 import { getBlockEntry, isMarkActive, toggleMark } from './commands';
 import { MOD_LABEL } from '../utils/platform';
+import { useT } from '../i18n';
 
 const BUTTONS = [
-  { mark: 'bold', label: 'B', title: `Bold (${MOD_LABEL}+B)` },
-  { mark: 'italic', label: 'i', title: `Italic (${MOD_LABEL}+I)` },
-  { mark: 'underline', label: 'U', title: `Underline (${MOD_LABEL}+U)` },
-  { mark: 'strikethrough', label: 'S', title: `Strikethrough (${MOD_LABEL}+Shift+X)` },
-  { mark: 'code', label: '</>', title: `Inline code (${MOD_LABEL}+E)` },
+  { mark: 'bold', label: 'B', keys: `${MOD_LABEL}+B` },
+  { mark: 'italic', label: 'i', keys: `${MOD_LABEL}+I` },
+  { mark: 'underline', label: 'U', keys: `${MOD_LABEL}+U` },
+  { mark: 'strikethrough', label: 'S', keys: `${MOD_LABEL}+Shift+X` },
+  { mark: 'code', label: '</>', keys: `${MOD_LABEL}+E` },
 ];
 
 /** Formatting bar that floats above a text selection, like Notion's. */
 export default function HoverToolbar() {
+  const t = useT();
   const editor = useSlate();
   const focused = useFocused();
   const ref = useRef(null);
@@ -44,8 +46,10 @@ export default function HoverToolbar() {
   });
 
   return createPortal(
-    <div ref={ref} className="popover hover-toolbar" onMouseDown={(e) => e.preventDefault()} role="toolbar" aria-label="Text formatting">
-      {BUTTONS.map(({ mark, label, title }) => (
+    <div ref={ref} className="popover hover-toolbar" onMouseDown={(e) => e.preventDefault()} role="toolbar" aria-label={t('editor.toolbarLabel')}>
+      {BUTTONS.map(({ mark, label, keys }) => {
+        const title = `${t(`marks.${mark}`)} (${keys})`;
+        return (
         <button
           key={mark}
           type="button"
@@ -57,7 +61,8 @@ export default function HoverToolbar() {
         >
           {label}
         </button>
-      ))}
+        );
+      })}
     </div>,
     document.body,
   );

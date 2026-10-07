@@ -1,4 +1,4 @@
-// Local file service for the Notes app, mounted into the Vite dev/preview server.
+// Local file service for the Muistipaikka app, mounted into the Vite dev/preview server.
 // Lets the app open/save files by real paths, keep its workspace in a folder,
 // fetch URLs without CORS limits, and close its own launcher window.
 //
@@ -16,10 +16,14 @@ const FETCH_TIMEOUT_MS = 15000;
 const LOOPBACK_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const HIDDEN_NAMES = new Set(['System Volume Information', '$Recycle.Bin', '$RECYCLE.BIN', 'desktop.ini', 'Thumbs.db']);
 
+// `code` and `params` let the app show the message in the user's language
+// (see the `server` keys in src/i18n); `message` is the English fallback.
 class HttpError extends Error {
-  constructor(status, message) {
+  constructor(status, message, code = null, params = {}) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.params = params;
   }
 }
 
@@ -43,40 +47,42 @@ async function readJsonBody(req) {
   let size = 0;
   for await (const chunk of req) {
     size += chunk.length;
-    if (size > MAX_BODY_BYTES) throw new HttpError(413, 'The request is too large.');
+    if (size > MAX_BODY_BYTES) throw new HttpError(413, 'The request is too large.', 'tooLarge');
     chunks.push(chunk);
   }
   if (!size) return {};
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
-    throw new HttpError(400, 'The request body is not valid JSON.');
+    throw new HttpError(400, 'The request body is not valid JSON.', 'badJson');
   }
 }
 
 function absolutePath(value) {
-  if (typeof value !== 'string' || !value.trim()) throw new HttpError(400, 'A path is required.');
+  if (typeof value !== 'string' || !value.trim()) throw new HttpError(400, 'A path is required.', 'pathRequired');
   const trimmed = value.trim();
   if (!path.isAbsolute(trimmed)) {
-    throw new HttpError(400, `Use a full path, for example ${path.join(os.homedir(), 'Documents')}`);
+    const example = path.join(os.homedir(), 'Documents');
+    throw new HttpError(400, `Use a full path, for example ${example}`, 'fullPath', { example });
   }
   return path.resolve(trimmed);
 }
 
 function friendlyError(err, target) {
   const where = target ? `: ${target}` : '';
+  const params = { path: target || '' };
   switch (err.code) {
     case 'ENOENT':
-      return new HttpError(404, `Not found${where}`);
+      return new HttpError(404, `Not found${where}`, 'notFound', params);
     case 'EACCES':
     case 'EPERM':
-      return new HttpError(403, `Permission denied${where}`);
+      return new HttpError(403, `Permission denied${where}`, 'permissionDenied', params);
     case 'ENOTDIR':
-      return new HttpError(400, `Not a folder${where}`);
+      return new HttpError(400, `Not a folder${where}`, 'notAFolder', params);
     case 'EISDIR':
-      return new HttpError(400, `That is a folder, not a file${where}`);
+      return new HttpError(400, `That is a folder, not a file${where}`, 'isAFolder', params);
     case 'EBUSY':
-      return new HttpError(423, `The file is in use by another program${where}`);
+      return new HttpError(423, `The file is in use by another program${where}`, 'fileBusy', params);
     default:
       return err instanceof HttpError ? err : new HttpError(500, err.message || 'Unexpected error');
   }
@@ -94,17 +100,17 @@ async function statOrNull(target) {
 async function quickPlaces() {
   const home = os.homedir();
   const candidates = [
-    ['Home', home, 'home'],
-    ['Desktop', path.join(home, 'Desktop'), 'monitor'],
-    ['Desktop (OneDrive)', path.join(home, 'OneDrive', 'Desktop'), 'monitor'],
-    ['Documents', path.join(home, 'Documents'), 'folder'],
-    ['Documents (OneDrive)', path.join(home, 'OneDrive', 'Documents'), 'folder'],
-    ['Downloads', path.join(home, 'Downloads'), 'download'],
+    ['home', 'Home', home, 'home'],
+    ['desktop', 'Desktop', path.join(home, 'Desktop'), 'monitor'],
+    ['desktop-onedrive', 'Desktop (OneDrive)', path.join(home, 'OneDrive', 'Desktop'), 'monitor'],
+    ['documents', 'Documents', path.join(home, 'Documents'), 'folder'],
+    ['documents-onedrive', 'Documents (OneDrive)', path.join(home, 'OneDrive', 'Documents'), 'folder'],
+    ['downloads', 'Downloads', path.join(home, 'Downloads'), 'download'],
   ];
   const places = [];
-  for (const [label, dir, icon] of candidates) {
+  for (const [id, label, dir, icon] of candidates) {
     const st = await statOrNull(dir).catch(() => null);
-    if (st?.isDirectory()) places.push({ label, path: dir, icon });
+    if (st?.isDirectory()) places.push({ id, label, path: dir, icon });
   }
 
   const drives = [];
@@ -172,7 +178,7 @@ const handlers = {
     try {
       const st = await fs.stat(target);
       if (st.isDirectory()) throw Object.assign(new Error(), { code: 'EISDIR' });
-      if (st.size > MAX_READ_BYTES) throw new HttpError(413, 'That file is larger than 50 MB.');
+      if (st.size > MAX_READ_BYTES) throw new HttpError(413, 'That file is larger than 50 MB.', 'fileTooLarge');
       return { path: target, content: await fs.readFile(target, 'utf8'), mtime: st.mtimeMs };
     } catch (err) {
       throw friendlyError(err, target);
@@ -181,9 +187,9 @@ const handlers = {
 
   async 'fs/write'({ path: input, content, overwrite = false }) {
     const target = absolutePath(input);
-    if (typeof content !== 'string') throw new HttpError(400, 'Content must be text.');
+    if (typeof content !== 'string') throw new HttpError(400, 'Content must be text.', 'contentNotText');
     try {
-      if (!overwrite && (await statOrNull(target))) throw new HttpError(409, `A file with that name already exists: ${target}`);
+      if (!overwrite && (await statOrNull(target))) throw new HttpError(409, `A file with that name already exists: ${target}`, 'alreadyExists', { path: target });
       // Write to a temp file first so a crash never leaves a half-written file behind.
       const temp = `${target}.${process.pid}.${Date.now()}.tmp`;
       await fs.writeFile(temp, content, 'utf8');
@@ -200,7 +206,7 @@ const handlers = {
     const target = absolutePath(to);
     try {
       const sameFile = source.toLowerCase() === target.toLowerCase();
-      if (!sameFile && (await statOrNull(target))) throw new HttpError(409, `A file with that name already exists: ${target}`);
+      if (!sameFile && (await statOrNull(target))) throw new HttpError(409, `A file with that name already exists: ${target}`, 'alreadyExists', { path: target });
       await fs.rename(source, target);
       return { path: target };
     } catch (err) {
@@ -223,9 +229,9 @@ const handlers = {
     try {
       parsed = new URL(String(url));
     } catch {
-      throw new HttpError(400, 'That doesn’t look like a web address.');
+      throw new HttpError(400, 'That doesn’t look like a web address.', 'badUrl');
     }
-    if (!/^https?:$/.test(parsed.protocol)) throw new HttpError(400, 'Only http:// and https:// links can be opened.');
+    if (!/^https?:$/.test(parsed.protocol)) throw new HttpError(400, 'Only http:// and https:// links can be opened.', 'httpOnly');
 
     let response;
     try {
@@ -235,13 +241,18 @@ const handlers = {
         headers: { 'User-Agent': 'NotesApp/1.0', Accept: 'text/html,text/markdown,text/plain,application/json;q=0.9,*/*;q=0.5' },
       });
     } catch (err) {
-      throw new HttpError(502, err.name === 'TimeoutError' ? 'The site took too long to answer.' : `Couldn’t reach that address (${err.cause?.code || err.message}).`);
+      if (err.name === 'TimeoutError') throw new HttpError(502, 'The site took too long to answer.', 'siteTimeout');
+      const reason = err.cause?.code || err.message;
+      throw new HttpError(502, `Couldn’t reach that address (${reason}).`, 'siteUnreachable', { reason });
     }
-    if (!response.ok) throw new HttpError(502, `The site answered with ${response.status} ${response.statusText}.`);
+    if (!response.ok) {
+      const status = `${response.status} ${response.statusText}`.trim();
+      throw new HttpError(502, `The site answered with ${status}.`, 'siteStatus', { status });
+    }
     const declared = Number(response.headers.get('content-length') || 0);
-    if (declared > MAX_FETCH_BYTES) throw new HttpError(413, 'That page is larger than 10 MB.');
+    if (declared > MAX_FETCH_BYTES) throw new HttpError(413, 'That page is larger than 10 MB.', 'pageTooLarge');
     const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length > MAX_FETCH_BYTES) throw new HttpError(413, 'That page is larger than 10 MB.');
+    if (buffer.length > MAX_FETCH_BYTES) throw new HttpError(413, 'That page is larger than 10 MB.', 'pageTooLarge');
     return { url: response.url, contentType: response.headers.get('content-type') || '', content: buffer.toString('utf8') };
   },
 
@@ -280,7 +291,7 @@ async function middleware(req, res, next) {
     send(res, 200, await handler(body));
   } catch (err) {
     const error = friendlyError(err);
-    send(res, error.status || 500, { error: error.message });
+    send(res, error.status || 500, { error: error.message, code: error.code || undefined, params: error.params });
   }
 }
 

@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { isSafeImageUrl, preloadImage, readImageFile } from '../utils/image';
+import { useT } from '../i18n';
 
 /**
  * Two side-by-side ways to pick an image:
@@ -7,6 +8,7 @@ import { isSafeImageUrl, preloadImage, readImageFile } from '../utils/image';
  * Uploads become base64 data URLs, so nothing needs external hosting.
  */
 export default function ImageSourcePicker({ onPick, onCancel, autoFocus = false }) {
+  const t = useT();
   const fileRef = useRef(null);
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
@@ -31,7 +33,7 @@ export default function ImageSourcePicker({ onPick, onCancel, autoFocus = false 
     event.preventDefault();
     const value = url.trim();
     if (!isSafeImageUrl(value)) {
-      setError('Enter an image link that starts with http:// or https://');
+      setError(t('imagePicker.invalidLink'));
       return;
     }
     setBusy(true);
@@ -58,35 +60,35 @@ export default function ImageSourcePicker({ onPick, onCancel, autoFocus = false 
       <div className="image-picker-row">
         <div className="image-picker-upload">
           <button type="button" className="btn btn-primary" onClick={() => fileRef.current.click()} disabled={busy}>
-            Upload Image
+            {t('imagePicker.upload')}
           </button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleFile} />
         </div>
 
-        <span className="image-picker-or">or</span>
+        <span className="image-picker-or">{t('imagePicker.or')}</span>
 
         <form className="image-picker-url" onSubmit={handleSubmit}>
           <input
             type="url"
             className="text-input"
-            placeholder="Paste an image link…"
+            placeholder={t('imagePicker.placeholder')}
             value={url}
             autoFocus={autoFocus}
             onChange={(e) => {
               setUrl(e.target.value);
               setError('');
             }}
-            aria-label="Image link"
+            aria-label={t('imagePicker.label')}
           />
           <button type="submit" className="btn btn-primary" disabled={busy || !url.trim()}>
-            Add Link
+            {t('imagePicker.addLink')}
           </button>
           <button type="button" className="btn" onClick={onCancel}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </form>
       </div>
-      {busy && <p className="image-picker-hint">Loading image…</p>}
+      {busy && <p className="image-picker-hint">{t('imagePicker.loading')}</p>}
       {error && (
         <p className="image-picker-error" role="alert">
           {error}

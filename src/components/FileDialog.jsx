@@ -3,24 +3,37 @@ import Modal from './Modal';
 import Icon from './Icon';
 import { INVALID_NAME_CHARS, extName, fileApi, joinPath } from '../files/fileApi';
 import { OPENABLE_EXTENSIONS, SAVE_FORMATS } from '../files/documents';
+import { getLocale, t, useT } from '../i18n';
 
-const TITLES = { open: 'Open file', save: 'Save as', folder: 'Choose a folder' };
-const ACTIONS = { open: 'Open', save: 'Save', folder: 'Select folder' };
+const TITLES = { open: 'fileDialog.titleOpen', save: 'fileDialog.titleSave', folder: 'fileDialog.titleFolder' };
+const ACTIONS = { open: 'fileDialog.actionOpen', save: 'fileDialog.actionSave', folder: 'fileDialog.actionFolder' };
+// Quick places from the file service, translated by id; drives keep their letter.
+const PLACE_KEYS = {
+  home: 'places.home',
+  desktop: 'places.desktop',
+  'desktop-onedrive': 'places.desktopOneDrive',
+  documents: 'places.documents',
+  'documents-onedrive': 'places.documentsOneDrive',
+  downloads: 'places.downloads',
+};
+const placeLabel = (place) => (PLACE_KEYS[place.id] ? t(PLACE_KEYS[place.id]) : place.label);
 
 function formatSize(bytes) {
   if (bytes == null) return '';
+  const num = (n) => n.toLocaleString(getLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 });
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  if (bytes < 1024 * 1024) return `${num(bytes / 1024)} KB`;
+  return `${num(bytes / 1024 / 1024)} MB`;
 }
 
-const formatDate = (ms) => new Date(ms).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+const formatDate = (ms) => new Date(ms).toLocaleDateString(getLocale(), { year: 'numeric', month: 'short', day: 'numeric' });
 
 /**
  * File browser backed by the local file service, so every file has a real path.
  * mode: 'open' → onSubmit(path) · 'save' → onSubmit({ path, format }) · 'folder' → onSubmit(path)
  */
 export default function FileDialog({ mode, service, startDir, suggestedName = '', initialFormat = 'note', onSubmit, onCancel, onUseSystemDialog }) {
+  useT();
   const [dir, setDir] = useState(null);
   const [parent, setParent] = useState(null);
   const [entries, setEntries] = useState([]);
@@ -69,8 +82,8 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
     try {
       const st = await fileApi.stat(target);
       if (st.exists && st.kind === 'file' && mode === 'open') onSubmit(st.path);
-      else if (st.exists && st.kind === 'file') setError('That is a file. Enter a folder.');
-      else if (!st.exists) setError(`Not found: ${target}`);
+      else if (st.exists && st.kind === 'file') setError(t('fileDialog.isFile'));
+      else if (!st.exists) setError(t('fileDialog.notFound', { path: target }));
       else go(st.path);
     } catch (err) {
       setError(err.message);
@@ -94,11 +107,11 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
   async function submitSave(fileName = name) {
     let finalName = fileName.trim();
     if (!finalName) {
-      setError('Enter a file name.');
+      setError(t('fileDialog.enterName'));
       return;
     }
     if (INVALID_NAME_CHARS.test(finalName)) {
-      setError('A file name can’t contain any of these characters: \\ / : * ? " < > |');
+      setError(t('fileDialog.invalidName'));
       return;
     }
     const ext = SAVE_FORMATS[format].ext;
@@ -107,7 +120,7 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
     try {
       const st = await fileApi.stat(target);
       if (st.exists && st.kind === 'dir') {
-        setError('A folder with that name already exists.');
+        setError(t('fileDialog.folderExists'));
         return;
       }
       if (st.exists && confirmOverwrite !== target) {
@@ -127,7 +140,7 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
     if (mode === 'folder') return onSubmit(entry?.kind === 'dir' ? entry.path : dir);
     if (entry?.kind === 'file') return onSubmit(entry.path);
     if (entry?.kind === 'dir') return go(entry.path);
-    setError('Choose a file to open.');
+    setError(t('fileDialog.chooseFile'));
     return undefined;
   }
 
@@ -152,20 +165,20 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
     <>
       {mode === 'open' && onUseSystemDialog && (
         <button type="button" className="text-btn fd-system" onClick={onUseSystemDialog}>
-          Use the system dialog instead…
+          {t('fileDialog.useSystemDialog')}
         </button>
       )}
-      <button type="button" className="btn" onClick={onCancel}>Cancel</button>
+      <button type="button" className="btn" onClick={onCancel}>{t('common.cancel')}</button>
       <button type="button" className="btn btn-primary" onClick={submit} disabled={loading || !dir}>
-        {confirmOverwrite ? 'Replace' : ACTIONS[mode]}
+        {confirmOverwrite ? t('common.replace') : t(ACTIONS[mode])}
       </button>
     </>
   );
 
   return (
-    <Modal title={TITLES[mode]} onClose={onCancel} size="xl" footer={footer}>
+    <Modal title={t(TITLES[mode])} onClose={onCancel} size="xl" footer={footer}>
       <div className="fd">
-        <nav className="fd-places" aria-label="Places">
+        <nav className="fd-places" aria-label={t('fileDialog.places')}>
           {service.places.map((place) => (
             <button
               key={place.path}
@@ -175,29 +188,29 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
               title={place.path}
             >
               <Icon name={place.icon} size={15} />
-              <span>{place.label}</span>
+              <span>{placeLabel(place)}</span>
             </button>
           ))}
         </nav>
 
         <div className="fd-main">
           <form className="fd-pathbar" onSubmit={submitPathBar}>
-            <button type="button" className="icon-btn" onClick={() => parent && go(parent)} disabled={!parent} aria-label="Up one folder" title="Up one folder">
+            <button type="button" className="icon-btn" onClick={() => parent && go(parent)} disabled={!parent} aria-label={t('fileDialog.upFolder')} title={t('fileDialog.upFolder')}>
               <Icon name="arrowUp" />
             </button>
             <input
               className="text-input"
               value={pathInput}
               onChange={(e) => setPathInput(e.target.value)}
-              aria-label="Folder path"
+              aria-label={t('fileDialog.folderPath')}
               spellCheck={false}
             />
-            <button type="submit" className="btn">Go</button>
+            <button type="submit" className="btn">{t('common.go')}</button>
           </form>
 
-          <div ref={listRef} className="fd-list" role="listbox" aria-label="Files" tabIndex={0} onKeyDown={onListKeyDown}>
-            {loading && !entries.length && <div className="fd-empty">Loading…</div>}
-            {!loading && !visible.length && <div className="fd-empty">This folder is empty.</div>}
+          <div ref={listRef} className="fd-list" role="listbox" aria-label={t('fileDialog.files')} tabIndex={0} onKeyDown={onListKeyDown}>
+            {loading && !entries.length && <div className="fd-empty">{t('fileDialog.loading')}</div>}
+            {!loading && !visible.length && <div className="fd-empty">{t('fileDialog.empty')}</div>}
             {visible.map((entry) => (
               <button
                 key={entry.path}
@@ -220,7 +233,7 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
           {mode === 'save' && (
             <div className="fd-savebar">
               <label className="fd-field">
-                <span>File name</span>
+                <span>{t('fileDialog.fileName')}</span>
                 <input
                   className="text-input"
                   value={name}
@@ -240,10 +253,10 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
                 />
               </label>
               <label className="fd-field">
-                <span>Save as type</span>
+                <span>{t('fileDialog.saveAsType')}</span>
                 <select className="text-input" value={format} onChange={(e) => setFormat(e.target.value)}>
                   {Object.entries(SAVE_FORMATS).map(([key, f]) => (
-                    <option key={key} value={key}>{f.label}</option>
+                    <option key={key} value={key}>{t(f.labelKey)}</option>
                   ))}
                 </select>
               </label>
@@ -252,13 +265,13 @@ export default function FileDialog({ mode, service, startDir, suggestedName = ''
           {mode === 'open' && (
             <label className="fd-filter">
               <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
-              Show all files (normally .note, .md, .txt and .json)
+              {t('fileDialog.showAll')}
             </label>
           )}
 
           {confirmOverwrite && (
             <p className="fd-warning" role="alert">
-              “{confirmOverwrite}” already exists. Click <b>Replace</b> to overwrite it.
+              {t('fileDialog.overwrite', { path: confirmOverwrite })}
             </p>
           )}
           {error && <p className="fd-error" role="alert">{error}</p>}

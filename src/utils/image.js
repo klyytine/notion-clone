@@ -1,3 +1,5 @@
+import { t } from '../i18n';
+
 const MAX_DIMENSION = 1600;
 const SMALL_FILE_BYTES = 400_000;
 
@@ -16,11 +18,11 @@ export function isSafeImageUrl(url) {
 export function readImageFile(file, maxDimension = MAX_DIMENSION) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type.startsWith('image/')) {
-      reject(new Error('Please choose an image file.'));
+      reject(new Error(t('imageErrors.chooseImage')));
       return;
     }
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.onerror = () => reject(new Error(t('imageErrors.cantRead')));
     reader.onload = () => {
       const dataUrl = reader.result;
       // Animated GIFs and vector SVGs would be ruined by rasterizing.
@@ -29,7 +31,7 @@ export function readImageFile(file, maxDimension = MAX_DIMENSION) {
         return;
       }
       const img = new Image();
-      img.onerror = () => reject(new Error('That file could not be decoded as an image.'));
+      img.onerror = () => reject(new Error(t('imageErrors.cantDecode')));
       img.onload = () => {
         const scale = Math.min(1, maxDimension / Math.max(img.width, img.height));
         if (scale === 1 && file.size < SMALL_FILE_BYTES) {
@@ -53,7 +55,7 @@ export function preloadImage(url) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => resolve(url);
-    img.onerror = () => reject(new Error("Couldn't load an image from that link."));
+    img.onerror = () => reject(new Error(t('imageErrors.cantLoadLink')));
     img.src = url;
   });
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { t } from '../i18n';
 
 // Client for the local file service in server/fileApi.js.
 
@@ -11,15 +12,19 @@ async function call(endpoint, body = {}) {
       body: JSON.stringify(body),
     });
   } catch {
-    throw new Error('The app’s file service isn’t running. Start the app with run.bat or “npm run dev”.');
+    throw new Error(t('fileService.notRunning'));
   }
   let data;
   try {
     data = await response.json();
   } catch {
-    throw Object.assign(new Error('The app’s file service isn’t available here.'), { status: response.status });
+    throw Object.assign(new Error(t('fileService.unavailable')), { status: response.status });
   }
-  if (!response.ok) throw Object.assign(new Error(data.error || `Request failed (${response.status})`), { status: response.status });
+  if (!response.ok) {
+    // The server sends an error code (translated here) plus an English fallback message.
+    const message = data.code ? t(`server.${data.code}`, data.params) : data.error || t('fileService.requestFailed', { status: response.status });
+    throw Object.assign(new Error(message), { status: response.status, code: data.code });
+  }
   return data;
 }
 
@@ -95,7 +100,7 @@ export function safeFileName(title) {
     .trim()
     .replace(/[. ]+$/, '')
     .slice(0, 120);
-  if (!name) name = 'Untitled';
+  if (!name) name = t('common.untitled');
   if (RESERVED.test(name)) name += '_';
   return name;
 }

@@ -10,6 +10,7 @@ import HoverToolbar from './HoverToolbar';
 import { withNotion } from './withNotion';
 import { filterCommands } from './slashCommands';
 import { changeIndent, exitBlock, getBlockEntry, insertBlock, setBlockType, toggleMark, toggleTodo } from './commands';
+import { useT } from '../i18n';
 
 // Match on the physical key code and on event.key, so shortcuts work across keyboard layouts.
 const isHotkey = (hotkey, event) => isCodeHotkey(hotkey, event) || isKeyHotkey(hotkey, event);
@@ -30,6 +31,7 @@ const BLOCK_HOTKEYS = BLOCK_HOTKEY_TYPES.flatMap((type, n) => [
 ]);
 
 export default function BlockEditor({ initialValue, onChange, readOnly = false, apiRef, showLineNumbers = false }) {
+  const t = useT();
   const editor = useMemo(() => withNotion(withHistory(withReact(createEditor()))), []);
   const [slash, setSlash] = useState(null); // { anchor, query, index }
 
@@ -167,7 +169,7 @@ export default function BlockEditor({ initialValue, onChange, readOnly = false, 
           onKeyDown={handleKeyDown}
           onBlur={() => setSlash(null)}
           spellCheck
-          aria-label="Page content"
+          aria-label={t('editor.contentLabel')}
         />
         {!readOnly && <HoverToolbar />}
         {slash && (

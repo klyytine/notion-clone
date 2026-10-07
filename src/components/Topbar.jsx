@@ -6,11 +6,13 @@ import ThemeToggle from './ThemeToggle';
 import Icon from './Icon';
 import FileMenu from './FileMenu';
 import { baseName } from '../files/fileApi';
+import { getLocale, useT } from '../i18n';
 
 const LONG_LINK = 8000;
 
 function SaveIndicator() {
   const { saveState } = usePages();
+  const t = useT();
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -18,13 +20,13 @@ function SaveIndicator() {
     return () => clearInterval(id);
   }, []);
 
-  let text = 'Saved';
-  if (saveState.status === 'saving') text = 'Saving...';
-  else if (saveState.status === 'dirty') text = 'Unsaved changes';
-  else if (saveState.status === 'error') text = saveState.message || 'Not saved';
+  let text = t('saveStatus.saved');
+  if (saveState.status === 'saving') text = t('saveStatus.saving');
+  else if (saveState.status === 'dirty') text = t('saveStatus.dirty');
+  else if (saveState.status === 'error') text = saveState.message || t('saveStatus.notSaved');
   else if (saveState.status === 'saved') {
     const minutes = Math.floor((Date.now() - saveState.at) / 60000);
-    text = minutes < 1 ? 'Saved just now' : `Saved ${minutes} min ago`;
+    text = minutes < 1 ? t('saveStatus.justNow') : t('saveStatus.minutesAgo', { count: minutes });
   }
 
   return (
@@ -35,6 +37,7 @@ function SaveIndicator() {
 }
 
 function ShareButton({ page }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const ref = useRef(null);
@@ -56,30 +59,24 @@ function ShareButton({ page }) {
   return (
     <div className="share-anchor" ref={ref}>
       <button type="button" className="topbar-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
-        Share
+        {t('topbar.share')}
       </button>
       {open && (
-        <div className="popover share-popover" role="dialog" aria-label="Share to web">
-          <div className="share-title"><Icon name="globe" /> Share to web</div>
-          <p className="share-desc">
-            Anyone with this link can view a read-only copy of the page. The content is encoded in the link
-            itself, so nothing is uploaded. Make new edits? Reopen this to get an updated link.
-          </p>
+        <div className="popover share-popover" role="dialog" aria-label={t('share.title')}>
+          <div className="share-title"><Icon name="globe" /> {t('share.title')}</div>
+          <p className="share-desc">{t('share.description')}</p>
           <div className="share-row">
-            <input className="text-input" readOnly value={url} onFocus={(e) => e.target.select()} aria-label="Share link" />
+            <input className="text-input" readOnly value={url} onFocus={(e) => e.target.select()} aria-label={t('share.linkLabel')} />
             <button type="button" className="btn btn-primary" onClick={copy}>
-              {copied ? 'Copied!' : 'Copy link'}
+              {copied ? t('share.copied') : t('share.copy')}
             </button>
           </div>
           <div className="share-meta">
-            <a href={url} target="_blank" rel="noreferrer">Open preview ↗</a>
-            <span>{(url.length / 1024).toFixed(1)} KB</span>
+            <a href={url} target="_blank" rel="noreferrer">{t('share.preview')}</a>
+            <span>{(url.length / 1024).toLocaleString(getLocale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })} KB</span>
           </div>
           {url.length > LONG_LINK && (
-            <p className="share-warning">
-              This link is long because it includes images. Some chat apps may cut it off — removing large
-              images or the cover makes it shorter.
-            </p>
+            <p className="share-warning">{t('share.longLink')}</p>
           )}
         </div>
       )}
@@ -89,9 +86,10 @@ function ShareButton({ page }) {
 
 export default function Topbar({ page, title, onToggleSidebar }) {
   const { unsavedFiles } = usePages();
+  const t = useT();
   return (
     <div className="topbar">
-      <button type="button" className="icon-btn" onClick={onToggleSidebar} aria-label="Toggle sidebar" title="Toggle sidebar">
+      <button type="button" className="icon-btn" onClick={onToggleSidebar} aria-label={t('topbar.toggleSidebar')} title={t('topbar.toggleSidebar')}>
         <Icon name="menu" size={18} />
       </button>
       <FileMenu />
@@ -99,10 +97,10 @@ export default function Topbar({ page, title, onToggleSidebar }) {
         {page ? (
           <>
             <span className="breadcrumb-icon">{page.icon || <Icon name="file" />}</span>
-            <span className="breadcrumb-title">{page.title || 'Untitled'}</span>
+            <span className="breadcrumb-title">{page.title || t('common.untitled')}</span>
             {page.filePath && (
               <span className="file-chip" title={page.filePath}>
-                {unsavedFiles.has(page.id) && <span className="file-dirty" aria-label="Unsaved changes in file">●</span>}
+                {unsavedFiles.has(page.id) && <span className="file-dirty" aria-label={t('topbar.fileUnsaved')}>●</span>}
                 {baseName(page.filePath)}
               </span>
             )}

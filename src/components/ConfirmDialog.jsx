@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useT } from '../i18n';
 
-export default function ConfirmDialog({ title, message, confirmLabel = 'Confirm', danger = false, onConfirm, onCancel }) {
+export default function ConfirmDialog({ title, message, confirmLabel, danger = false, onConfirm, onCancel }) {
+  const t = useT();
   const confirmRef = useRef(null);
 
   useEffect(() => {
@@ -28,9 +30,9 @@ export default function ConfirmDialog({ title, message, confirmLabel = 'Confirm'
         <h2 id="confirm-title" className="modal-title">{title}</h2>
         {message && <p className="modal-message">{message}</p>}
         <div className="modal-actions">
-          <button type="button" className="btn" onClick={onCancel}>Cancel</button>
+          <button type="button" className="btn" onClick={onCancel}>{t('common.cancel')}</button>
           <button type="button" ref={confirmRef} className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`} onClick={onConfirm}>
-            {confirmLabel}
+            {confirmLabel ?? t('common.ok')}
           </button>
         </div>
       </div>

@@ -10,6 +10,7 @@ import {
 } from '../files/workspace';
 import { baseName, fileApi, joinPath, samePath } from '../files/fileApi';
 import { serializePage } from '../files/documents';
+import { t } from '../i18n';
 
 export { makePage, newId } from '../files/workspace';
 
@@ -19,8 +20,8 @@ const KEEPALIVE_LIMIT = 60000;
 const PagesContext = createContext(null);
 
 function describeSaveError(err) {
-  if (err?.name === 'QuotaExceededError') return 'Not saved — browser storage is full';
-  return `Not saved — ${err?.message || 'unknown error'}`;
+  if (err?.name === 'QuotaExceededError') return t('saveStatus.storageFull');
+  return t('saveStatus.failed', { message: err?.message || t('saveStatus.unknownError') });
 }
 
 export function PagesProvider({ children }) {
@@ -66,7 +67,7 @@ export function PagesProvider({ children }) {
       const { content } = await fileApi.read(joinPath(source, WORKSPACE_FILE));
       setPages(parseWorkspace(content));
     } catch (err) {
-      setLoadError(err.status === 404 ? `There is no ${WORKSPACE_FILE} in this folder.` : err.message);
+      setLoadError(err.status === 404 ? t('storageScreen.noWorkspaceFile', { file: WORKSPACE_FILE }) : err.message);
     }
   }, []);
 
@@ -109,7 +110,7 @@ export function PagesProvider({ children }) {
           await fileApi.write(page.filePath, serializePage(page, page.fileFormat || 'note'), { overwrite: true });
         } catch (err) {
           dirtyFilesRef.current.add(id);
-          error ??= `Couldn’t save ${baseName(page.filePath)} — ${err.message}`;
+          error ??= t('saveStatus.fileFailed', { name: baseName(page.filePath), message: err.message });
         }
       }
 
@@ -279,13 +280,13 @@ export function PagesProvider({ children }) {
   if (loadError) {
     return (
       <div className="storage-screen">
-        <h1>Can’t open your notes folder</h1>
+        <h1>{t('storageScreen.cantOpenTitle')}</h1>
         <p className="storage-path">{folder}</p>
         <p>{loadError}</p>
         <div className="storage-actions">
-          <button type="button" className="btn btn-primary" onClick={load}>Try again</button>
+          <button type="button" className="btn btn-primary" onClick={load}>{t('storageScreen.tryAgain')}</button>
           <button type="button" className="btn" onClick={() => updatePrefs({ storageFolder: null })}>
-            Use browser storage instead
+            {t('storageScreen.useBrowser')}
           </button>
         </div>
       </div>
@@ -294,7 +295,7 @@ export function PagesProvider({ children }) {
   if (!pages) {
     return (
       <div className="storage-screen">
-        <p className="storage-loading">Loading notes from {folder}…</p>
+        <p className="storage-loading">{t('storageScreen.loading', { folder })}</p>
       </div>
     );
   }

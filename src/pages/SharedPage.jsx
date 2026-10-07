@@ -6,8 +6,10 @@ import PageHeader from '../components/PageHeader';
 import ThemeToggle from '../components/ThemeToggle';
 import BlockEditor from '../editor/BlockEditor';
 import Icon from '../components/Icon';
+import { useT } from '../i18n';
 
 export default function SharedPage() {
+  const t = useT();
   const { hash } = useLocation();
   const { createPage } = usePages();
   const navigate = useNavigate();
@@ -21,22 +23,22 @@ export default function SharedPage() {
   }, [hash]);
 
   useEffect(() => {
-    document.title = page ? `${page.icon ? `${page.icon} ` : ''}${page.title || 'Untitled'}` : 'Link not found';
-  }, [page]);
+    document.title = page ? `${page.icon ? `${page.icon} ` : ''}${page.title || t('common.untitled')}` : t('shared.notFoundTitle');
+  }, [page, t]);
 
   if (!page) {
     return (
       <div className="shared-error">
         <div className="shared-error-icon"><Icon name="link" size={40} /></div>
-        <h1>This link doesn’t work</h1>
-        <p>The shared page couldn’t be read. The link may be incomplete — try copying it again.</p>
-        <Link to="/" className="btn btn-primary">Go to my notes</Link>
+        <h1>{t('shared.brokenHeading')}</h1>
+        <p>{t('shared.brokenMessage')}</p>
+        <Link to="/" className="btn btn-primary">{t('shared.goHome')}</Link>
       </div>
     );
   }
 
   function duplicate() {
-    const copy = createPage({ ...page, title: page.title ? `${page.title} (copy)` : '' });
+    const copy = createPage({ ...page, title: page.title ? t('shared.copySuffix', { title: page.title }) : '' });
     navigate(`/p/${copy.id}`);
   }
 
@@ -45,11 +47,11 @@ export default function SharedPage() {
       <div className="topbar">
         <div className="breadcrumb">
           <span className="breadcrumb-icon">{page.icon || <Icon name="file" />}</span>
-          <span className="breadcrumb-title">{page.title || 'Untitled'}</span>
-          <span className="badge">Read-only</span>
+          <span className="breadcrumb-title">{page.title || t('common.untitled')}</span>
+          <span className="badge">{t('shared.readOnly')}</span>
         </div>
         <div className="topbar-right">
-          <button type="button" className="topbar-btn" onClick={duplicate}>Duplicate to my notes</button>
+          <button type="button" className="topbar-btn" onClick={duplicate}>{t('shared.duplicate')}</button>
           <ThemeToggle />
         </div>
       </div>

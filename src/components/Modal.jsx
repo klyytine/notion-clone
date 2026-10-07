@@ -1,11 +1,13 @@
 import { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon';
+import { useT } from '../i18n';
 
 // Open modals, newest last, so Escape only closes the top one.
 const stack = [];
 
 export default function Modal({ title, onClose, children, footer, size = 'normal', className = '' }) {
+  const t = useT();
   const id = useId();
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -46,7 +48,7 @@ export default function Modal({ title, onClose, children, footer, size = 'normal
         <div className="modal-head">
           <h2 id={`${id}-title`} className="modal-title">{title}</h2>
           {onClose && (
-            <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+            <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.close')}>
               <Icon name="x" />
             </button>
           )}

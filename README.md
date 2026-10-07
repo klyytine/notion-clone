@@ -1,4 +1,6 @@
-# Notes — a Notion-style block editor
+# Muistipaikka — a Notion-style block editor
+
+Muistipaikka (Finnish for “a place for notes”) is a Notion-style note app in **Finnish and English**. Finnish is the default; switch in **Preferences → Language**.
 
 React 18 + Vite + Slate.js. Pages are kept in `localStorage` by default, or in a workspace file in a folder you choose. Images are stored as base64 data URLs. A small local file service built into the Vite server lets the app open and save real files on disk.
 
@@ -11,14 +13,15 @@ npm run build      # static build in dist/ (runs without the file service)
 ## Open it like a desktop app (Windows)
 
 - **Double-click `run.bat`**, or
-- Run **`create-shortcut.bat`** once to put a **Notes** icon on the Desktop and in the Start menu, then click that.
+- Run **`create-shortcut.bat`** once to put a **Muistipaikka** icon on the Desktop and in the Start menu, then click that. It also removes old “Notes” shortcuts that point to this launcher.
 
-The launcher (`launcher/launch.ps1`) starts the server hidden, opens the app in its own Edge/Chrome window (no tabs or address bar), and stops the server when you close the window. On first run it installs dependencies if needed. Requires Node.js.
+The launcher (`launcher/launch.ps1`) starts the server hidden, opens the app in its own Edge/Chrome window (no tabs or address bar), and stops the server when you close the window. On first run it installs dependencies if needed. Requires Node.js. The launcher's own error messages (Node.js missing, port in use) follow the Windows display language: Finnish when Windows is in Finnish, English otherwise.
 
 Notes opened this way are stored in the app window's own browser profile (`%LOCALAPPDATA%\NotesApp\window-profile`), separate from your normal browser. To keep them somewhere you can see and back up, choose a folder in **File → Preferences → Storage**.
 
 ## Features
 
+- **Languages**: Finnish (default) and English for menus, dialogs, messages and help, using the Finnish terms from Notion's own help (*lohko*, *Tehtävälista*, *Huomiolohko*…). Slash commands accept both languages (`/tehtävä` and `/todo`). Your page content is never translated.
 - **Block editor**: text, H1–H3, bulleted/numbered lists (nestable with Tab), to-dos, quote, callout, code, divider, image
 - **Slash menu**: type `/` and filter, then ↑ ↓ Enter
 - **Markdown shortcuts**: `#`, `##`, `###`, `-`, `1.`, `[]`, `"`, ` ``` `, `---`, plus inline `**bold**`, `*italic*`, `` `code` ``, `~strike~`
@@ -27,10 +30,10 @@ Notes opened this way are stored in the app window's own browser profile (`%LOCA
 - **Sidebar**: page list with icons, active highlight, "+ New Page", delete with confirmation, Shortcuts and Help buttons
 - **File menu**: Open File, Open from URL, Open Recent, Save, Save As, Rename, Print, Preferences, Quit
 - **File formats**: `.note` (lossless JSON) and `.md` open and save; `.txt`, `.json` and web pages open. A page saved to a file stays linked to it, and later saves write back to that file. The top bar shows the file name, with ● when it has unsaved changes.
-- **Preferences**: storage location (this browser, or a folder on this computer), autosave on/off and delay, "ask to save" on close, line numbers, word count
+- **Preferences**: language, storage location (this browser, or a folder on this computer), autosave on/off and delay, "ask to save" on close, line numbers, word count
 - **Autosave**: debounced, with "Saving..." / "Saved just now"; Ctrl/⌘+S saves immediately
 - **Public sharing**: `/share#<base64url>`. The page snapshot lives in the URL fragment, so nothing is uploaded. Viewers can duplicate it into their own notes.
-- **Help page** (`/help`, in the sidebar): basic usage, every slash command, markdown and keyboard shortcuts
+- **Help page** (`/help`, in the sidebar): basic usage, every slash command, markdown and keyboard shortcuts, in the selected language. A button adds the welcome page again in the current language.
 - **Print**: a print stylesheet hides the app chrome and always prints in light colors
 - **Dark/light mode**: follows the OS setting by default; toggle with Ctrl/⌘+Shift+L
 
@@ -61,14 +64,19 @@ Notes opened this way are stored in the app window's own browser profile (`%LOCA
 - `main.jsx`: mounts the React app.
 - `App.jsx`: providers (theme, preferences, pages) and routes: `/p/:id`, `/share`, `/help`.
 - `PagesContext`: the list of pages, create/update/delete, autosave queue, writing pages back to linked files, save on window close, unsaved-changes tracking.
-- `PrefsContext`: user preferences, validated and stored in `localStorage`.
+- `PrefsContext`: user preferences (including the language), validated and stored in `localStorage`.
 - `ThemeContext`: light/dark theme, the OS default and the Ctrl/⌘+Shift+L shortcut.
-- `welcomePage.js`: the page a new user starts with.
+- `welcomePage.js`: the welcome page (“Aloitusopas” / “Getting started”) in both languages.
+
+**Languages (`src/i18n/`)**
+- `index.js`: the current language, `t(key, params)` with `{name}` placeholders and plural forms, and the `useT()` hook that re-renders a component when the language changes. Plain modules (file parsers, error messages) call `t` directly.
+- `fi.js` / `en.js`: every interface string, with the same keys in both files.
+- `help/content.fi.jsx` / `help/content.en.jsx`: the help page text in each language.
 
 **Screens**
 - `Workspace`: the main screen for one page (sidebar, top bar, header, editor, status bar).
 - `SharedPage`: read-only view of a shared link, with "Duplicate to my notes".
-- `HelpPage`: usage guide, slash commands and shortcuts.
+- `HelpPage`: picks the help content for the current language, renders its table of contents and sections, and offers “Add a welcome page”.
 
 **Layout and chrome**
 - `Topbar`: sidebar toggle, File menu, breadcrumb with file chip, save status, Share popover, theme toggle.
@@ -101,10 +109,11 @@ Notes opened this way are stored in the app window's own browser profile (`%LOCA
 **Dialogs and controls**
 - `Modal`: shared modal with focus trapping and Esc handling (only the top modal closes).
 - `FileDialog`: in-app file browser for Open, Save As and choosing a folder.
-- `PreferencesDialog`: Storage, Saving and Editor settings.
+- `PreferencesDialog`: Language, Storage, Saving and Editor settings.
 - `AppDialogs`: Open from URL, Rename, Unsaved changes, and message dialogs.
 - `ConfirmDialog`: yes/no confirmation (deleting a page).
 - `ShortcutsDialog`: lists every shortcut from `help/shortcuts.js`.
+- `help/HelpParts.jsx`: pieces shared by both help languages (key tables, command list, shortcut groups).
 - `Switch`: labelled on/off toggle.
 - `Icon`: inline SVG line icons.
 
@@ -115,10 +124,10 @@ Notes opened this way are stored in the app window's own browser profile (`%LOCA
 - `utils/platform.js`: Mac detection and ⌘/Ctrl labels.
 
 **Server and launcher**
-- `server/fileApi.js`: Vite plugin that adds the `/api/*` file service to the dev and preview servers.
+- `server/fileApi.js`: Vite plugin that adds the `/api/*` file service to the dev and preview servers. Errors carry a code (such as `notFound`) that the app translates, plus an English fallback message.
 - `launcher/launch.ps1`: starts the server and opens the app window.
 - `launcher/create-shortcut.ps1`: creates the Desktop and Start menu shortcuts.
-- `launcher/make_icon.py`: draws the app icon (needs Pillow).
+- `launcher/make_icon.py`: draws the app icon, a black-and-white 3D “M” (needs Pillow).
 
 ## Files and folders
 
@@ -131,12 +140,13 @@ notion-clone/
 ├── create-shortcut.bat         Adds Desktop and Start menu shortcuts
 ├── PROMPT.md                   Stand-alone build prompt for this app
 ├── README.md
+├── README.fi.md                Finnish README for local use (git-ignored)
 ├── LICENSE                     MIT
 ├── public/
 │   └── icon.png                App and favicon icon
 ├── launcher/
 │   ├── launch.ps1              Starts server, opens app window, cleans up
-│   ├── create-shortcut.ps1     Creates Notes.lnk shortcuts
+│   ├── create-shortcut.ps1     Creates Muistipaikka.lnk shortcuts
 │   ├── make_icon.py            Generates notes.ico and public/icon.png
 │   └── notes.ico               Shortcut icon
 ├── server/
@@ -145,6 +155,10 @@ notion-clone/
 │   ├── main.jsx
 │   ├── App.jsx
 │   ├── styles.css              All styles: themes, dark mode, print
+│   ├── i18n/
+│   │   ├── index.js            t(), useT(), current language
+│   │   ├── fi.js               Finnish strings (default)
+│   │   └── en.js               English strings
 │   ├── context/
 │   │   ├── PagesContext.jsx
 │   │   ├── PrefsContext.jsx
@@ -188,7 +202,10 @@ notion-clone/
 │   │   ├── workspace.js
 │   │   └── recent.js
 │   ├── help/
-│   │   └── shortcuts.js        Single source for shortcut lists
+│   │   ├── shortcuts.js        Single source for shortcut lists
+│   │   ├── HelpParts.jsx       Shared help building blocks
+│   │   ├── content.fi.jsx      Help text in Finnish
+│   │   └── content.en.jsx      Help text in English
 │   ├── hooks/
 │   │   └── useClickOutside.js
 │   └── utils/
@@ -207,11 +224,11 @@ notion-clone/
 | Key | Read | Written | Why |
 | --- | --- | --- | --- |
 | `notion-clone:pages:v1` | At startup, when storage is "This browser" | On autosave/save, on window close, and when switching storage back to the browser | All pages (title, icon, cover, blocks, linked file path) |
-| `notion-clone:prefs:v1` | At startup | When a preference changes | Preferences, including the chosen storage folder |
+| `notion-clone:prefs:v1` | At startup | When a preference changes | Preferences, including the language and the chosen storage folder |
 | `notion-clone:theme` | At startup | When the theme is toggled | Remembers light/dark choice |
 | `notion-clone:recent:v1` | At startup, and when another tab changes it | When a file or URL is opened or saved, renamed, or Clear Recent is used | The Open Recent list (last 10) |
 
-In the launcher window, this storage belongs to the profile in `%LOCALAPPDATA%\NotesApp\window-profile`. In a normal browser tab, it belongs to that browser for `http://localhost:5173`.
+In the launcher window, this storage belongs to the profile in `%LOCALAPPDATA%\NotesApp\window-profile`. The `NotesApp` folder and the `notion-clone:` keys kept their names after the app was renamed, so existing notes stay where they are. In a normal browser tab, it belongs to that browser for `http://localhost:5173`.
 
 **Files on disk (through the local file service)**
 
@@ -230,7 +247,7 @@ In the launcher window, this storage belongs to the profile in `%LOCALAPPDATA%\N
 
 **Launcher and setup (not at app runtime)**
 - `launch.ps1` runs `npm install` into `node_modules/` on first run and creates the browser profile folder.
-- `create-shortcut.ps1` writes `Notes.lnk` to the Desktop and the Start menu Programs folder.
+- `create-shortcut.ps1` writes `Muistipaikka.lnk` to the Desktop and the Start menu Programs folder, and deletes old `Notes.lnk` shortcuts that start this launcher.
 - `make_icon.py` writes `launcher/notes.ico` and `public/icon.png`.
 - `npm run build` writes `dist/`.
 
@@ -241,6 +258,7 @@ In the launcher window, this storage belongs to the profile in `%LOCALAPPDATA%\N
 - Data loaded from storage, files, URLs or a shared link is sanitized: only known block types and marks are kept, and image URLs must be `http(s)` or `data:image/…`.
 - The file service only answers same-origin requests from `localhost` with the `X-Notes-App` header, so other websites can't use it to touch your files.
 - Without the file service (e.g. a static deployment of `dist/`), storage stays in the browser, Open uses the browser's file picker, and Save As downloads a `.note` file.
+- To add a language: copy `src/i18n/en.js`, translate it, register it in `LANGUAGES` in `src/i18n/index.js`, and add a `src/help/content.<code>.jsx`.
 - When deploying, configure the host to serve `index.html` for every route (SPA fallback) so `/p/:id`, `/share` and `/help` resolve.
 
 ## License

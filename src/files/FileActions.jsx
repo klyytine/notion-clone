@@ -8,9 +8,11 @@ import { addRecent, removeRecent, renameRecent } from './recent';
 import FileDialog from '../components/FileDialog';
 import PreferencesDialog from '../components/PreferencesDialog';
 import { MessageDialog, OpenUrlDialog, RenameDialog, UnsavedChangesDialog } from '../components/AppDialogs';
+import { t } from '../i18n';
 
 const FileActionsContext = createContext(null);
 const OPEN_ACCEPT = '.note,.json,.md,.markdown,.txt,text/plain,text/markdown,application/json';
+const documentsFolder = (service) => service.places.find((p) => p.id === 'documents')?.path;
 
 function nameFromUrl(url) {
   try {
@@ -44,7 +46,7 @@ export function FileActionsProvider({ page, children }) {
 
   async function openPath(path) {
     const format = formatFromPath(path);
-    if (!format || format === 'html') throw new Error('This file type isn’t supported. Open a .note, .md, .txt or .json file.');
+    if (!format || format === 'html') throw new Error(t('fileActions.unsupportedType'));
     const { content, path: resolved } = await fileApi.read(path);
     const doc = parseDocument(content, { format, name: baseName(resolved) });
     // .note/.json and Markdown can be saved back in place; .txt opens as a copy.
@@ -58,9 +60,9 @@ export function FileActionsProvider({ page, children }) {
       result = await fileApi.fetchUrl(url);
     } else {
       const response = await fetch(url).catch(() => {
-        throw new Error('The site can’t be reached from here (it may block access from other sites).');
+        throw new Error(t('fileActions.siteUnreachable'));
       });
-      if (!response.ok) throw new Error(`The site answered with ${response.status}.`);
+      if (!response.ok) throw new Error(t('fileActions.siteStatus', { status: response.status }));
       result = { url: response.url, contentType: response.headers.get('content-type') || '', content: await response.text() };
     }
     const format = detectFormat({ url: result.url, contentType: result.contentType, text: result.content });
@@ -103,14 +105,14 @@ export function FileActionsProvider({ page, children }) {
     }
     if (!closed) {
       setQuitting(false);
-      showMessage('Ready to close', 'Your work is handled. Close this window to finish quitting.');
+      showMessage(t('fileActions.readyToCloseTitle'), t('fileActions.readyToClose'));
     }
   }
 
   const actions = {
     openFile() {
       if (service) {
-        const start = page?.filePath ? dirName(page.filePath) : prefs.storageFolder || service.places.find((p) => p.label.startsWith('Documents'))?.path;
+        const start = page?.filePath ? dirName(page.filePath) : prefs.storageFolder || documentsFolder(service);
         setDialog({ type: 'open', startDir: start });
       } else {
         nativeInputRef.current?.click();
@@ -125,20 +127,20 @@ export function FileActionsProvider({ page, children }) {
           await openUrl(entry.location);
           return;
         }
-        if (!service) throw new Error('Recent files need the app’s file service. Start the app with run.bat.');
+        if (!service) throw new Error(t('fileActions.recentNeedsService'));
         await openPath(entry.location);
       } catch (err) {
         if (err.status === 404) {
           removeRecent(entry.kind, entry.location);
-          showMessage('File not found', `“${entry.location}” isn’t there anymore, so it was removed from Open Recent.`);
+          showMessage(t('fileActions.fileNotFoundTitle'), t('fileActions.fileNotFound', { path: entry.location }));
         } else {
-          showMessage('Couldn’t open', err.message);
+          showMessage(t('fileActions.couldntOpen'), err.message);
         }
       }
     },
     async save() {
       const ok = await flush();
-      if (!ok) showMessage('Couldn’t save', 'Some changes couldn’t be saved. The status in the top bar has the details.');
+      if (!ok) showMessage(t('fileActions.couldntSave'), t('fileActions.someNotSaved'));
     },
     saveAs() {
       if (!page) return;
@@ -149,7 +151,7 @@ export function FileActionsProvider({ page, children }) {
       const format = page.fileFormat || 'note';
       setDialog({
         type: 'saveAs',
-        startDir: page.filePath ? dirName(page.filePath) : prefs.storageFolder || service.places.find((p) => p.label.startsWith('Documents'))?.path,
+        startDir: page.filePath ? dirName(page.filePath) : prefs.storageFolder || documentsFolder(service),
         suggestedName: page.filePath ? baseName(page.filePath) : `${safeFileName(page.title)}${SAVE_FORMATS[format].ext}`,
         format,
       });
@@ -232,7 +234,7 @@ export function FileActionsProvider({ page, children }) {
           try {
             await readNativeFile(file);
           } catch (err) {
-            showMessage('Couldn’t open', err.message);
+            showMessage(t('fileActions.couldntOpen'), err.message);
           }
         }}
       />
@@ -249,7 +251,7 @@ export function FileActionsProvider({ page, children }) {
             try {
               await openPath(path);
             } catch (err) {
-              showMessage('Couldn’t open', err.message);
+              showMessage(t('fileActions.couldntOpen'), err.message);
             }
           }}
         />
@@ -268,7 +270,7 @@ export function FileActionsProvider({ page, children }) {
             try {
               await writeDocument(page, path, format);
             } catch (err) {
-              showMessage('Couldn’t save', err.message);
+              showMessage(t('fileActions.couldntSave'), err.message);
             }
           }}
         />
@@ -330,7 +332,7 @@ export function FileActionsProvider({ page, children }) {
               close();
               quitNow();
             } else {
-              showMessage('Couldn’t save', 'Some changes couldn’t be saved, so the app stayed open.');
+              showMessage(t('fileActions.couldntSave'), t('fileActions.notSavedStayedOpen'));
             }
           }}
         />

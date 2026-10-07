@@ -5,6 +5,7 @@ import { useFileActions } from '../files/FileActions';
 import { clearRecent, useRecent } from '../files/recent';
 import { baseName } from '../files/fileApi';
 import { MOD_LABEL } from '../utils/platform';
+import { useT } from '../i18n';
 
 const M = MOD_LABEL;
 
@@ -40,6 +41,7 @@ function shortLocation(entry) {
 }
 
 export default function FileMenu() {
+  const t = useT();
   const actions = useFileActions();
   const recent = useRecent();
   const [open, setOpen] = useState(false);
@@ -91,18 +93,18 @@ export default function FileMenu() {
         aria-expanded={open}
         onClick={() => (open ? closeMenu() : setOpen(true))}
       >
-        File
+        {t('fileMenu.label')}
       </button>
 
       {open && (
-        <div ref={menuRef} className="popover menu" role="menu" aria-label="File" onKeyDown={onKeyDown}>
-          <MenuItem label="Open File…" shortcut={`${M}+O`} onClick={run(actions.openFile)} />
-          <MenuItem label="Open from URL…" onClick={run(actions.openUrl)} />
+        <div ref={menuRef} className="popover menu" role="menu" aria-label={t('fileMenu.label')} onKeyDown={onKeyDown}>
+          <MenuItem label={t('fileMenu.openFile')} shortcut={`${M}+O`} onClick={run(actions.openFile)} />
+          <MenuItem label={t('fileMenu.openUrl')} onClick={run(actions.openUrl)} />
           <div className="menu-sub" onMouseEnter={() => setRecentOpen(true)} onMouseLeave={() => setRecentOpen(false)}>
-            <MenuItem label="Open Recent" submenu expanded={recentOpen} data-recent="toggle" onClick={() => setRecentOpen((o) => !o)} />
+            <MenuItem label={t('fileMenu.openRecent')} submenu expanded={recentOpen} data-recent="toggle" onClick={() => setRecentOpen((o) => !o)} />
             {recentOpen && (
-              <div className="popover menu submenu" role="menu" aria-label="Open Recent">
-                {recent.length === 0 && <div className="menu-empty">No recent files</div>}
+              <div className="popover menu submenu" role="menu" aria-label={t('fileMenu.openRecent')}>
+                {recent.length === 0 && <div className="menu-empty">{t('fileMenu.noRecent')}</div>}
                 {recent.map((entry) => (
                   <button
                     key={`${entry.kind}:${entry.location}`}
@@ -120,7 +122,7 @@ export default function FileMenu() {
                 {recent.length > 0 && (
                   <>
                     <div className="menu-sep" role="separator" />
-                    <MenuItem label="Clear Recent" onClick={run(clearRecent)} />
+                    <MenuItem label={t('fileMenu.clearRecent')} onClick={run(clearRecent)} />
                   </>
                 )}
               </div>
@@ -128,18 +130,18 @@ export default function FileMenu() {
           </div>
 
           <div className="menu-sep" role="separator" />
-          <MenuItem label="Save" shortcut={`${M}+S`} onClick={run(actions.save)} />
-          <MenuItem label="Save As…" shortcut={`${M}+Shift+S`} onClick={run(actions.saveAs)} disabled={!actions.hasPage} />
-          <MenuItem label="Rename…" shortcut="F2" onClick={run(actions.rename)} disabled={!actions.hasPage} />
+          <MenuItem label={t('fileMenu.save')} shortcut={`${M}+S`} onClick={run(actions.save)} />
+          <MenuItem label={t('fileMenu.saveAs')} shortcut={`${M}+Shift+S`} onClick={run(actions.saveAs)} disabled={!actions.hasPage} />
+          <MenuItem label={t('fileMenu.rename')} shortcut="F2" onClick={run(actions.rename)} disabled={!actions.hasPage} />
 
           <div className="menu-sep" role="separator" />
-          <MenuItem label="Print…" shortcut={`${M}+P`} onClick={run(actions.print)} />
+          <MenuItem label={t('fileMenu.print')} shortcut={`${M}+P`} onClick={run(actions.print)} />
 
           <div className="menu-sep" role="separator" />
-          <MenuItem label="Preferences…" shortcut={`${M}+,`} onClick={run(actions.preferences)} />
+          <MenuItem label={t('fileMenu.preferences')} shortcut={`${M}+,`} onClick={run(actions.preferences)} />
 
           <div className="menu-sep" role="separator" />
-          <MenuItem label="Quit" shortcut={`${M}+Q`} onClick={run(actions.quit)} />
+          <MenuItem label={t('fileMenu.quit')} shortcut={`${M}+Q`} onClick={run(actions.quit)} />
         </div>
       )}
     </div>
